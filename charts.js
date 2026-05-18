@@ -384,7 +384,10 @@ function renderCountryDistribChart(){
   // For each country: refined rank-interval indicator + dots
   countries.forEach((c,i) => {
     const cx = xCenter(i);
-    const w = Math.min(colW*0.5, 30);
+    // Capsule and dot-spread share the same width so the gradient pill encloses
+    // every context dot. Cap at 64 so very wide columns don't make the capsule
+    // dominate the layout.
+    const w = Math.min(colW*0.72, 64);
     const yLo = yByRank(ranges[c].meanLo);
     const yHi = yByRank(ranges[c].meanHi);
     const gid = NORTH.has(c) ? "intGradN" : (SOUTH.has(c) ? "intGradS" : "intGradX");
@@ -397,15 +400,13 @@ function renderCountryDistribChart(){
 
     // soft range capsule (gradient pill only — no end caps or spine)
     if(yHi - yLo > 1){
-      svg += `<rect x="${cx-w/2}" y="${yLo-3}" width="${w}" height="${yHi-yLo+6}" fill="url(#${gid})" rx="${w/2}"/>`;
-      const spanRanks = ranges[c].span;
-      if(spanRanks >= 1){
-        svg += `<text x="${cx+w/2+4}" y="${(yLo+yHi)/2+3}" font-family="JetBrains Mono, monospace" font-size="10" font-weight="600" fill="${lineCol}" opacity="1">±${(spanRanks/2).toFixed(1)}</text>`;
-      }
+      svg += `<rect x="${cx-w/2}" y="${yLo-3}" width="${w}" height="${yHi-yLo+6}" fill="url(#${gid})" rx="${Math.min(w/2,12)}"/>`;
     }
 
-    // dots per context with jitter — vertical line is 95% bootstrap CI of the mean rank
-    const jit = [-w*0.40,-w*0.20,0,w*0.20,w*0.40];
+    // dots per context — vertical line is 95% bootstrap CI of the mean rank.
+    // Same width as the capsule so dots sit inside it.
+    const dotW = w;
+    const jit = [-dotW*0.40,-dotW*0.20,0,dotW*0.20,dotW*0.40];
     CONTEXTS.forEach((ctx,k) => {
       const r = dist[ctx][trait][c];
       const yCiLo = yByRank(r.ci_lo), yCiHi = yByRank(r.ci_hi), ym = yByRank(r.mean);
@@ -417,6 +418,24 @@ function renderCountryDistribChart(){
       svg += `<line x1="${x-2.5}" y1="${yCiHi}" x2="${x+2.5}" y2="${yCiHi}" stroke="${CTX_COLOR[ctx]}" stroke-width="1.6" stroke-opacity="1" stroke-linecap="round"/>`;
       svg += `<circle cx="${x}" cy="${ym}" r="5.2" fill="${CTX_COLOR[ctx]}" stroke="#ffffff" stroke-width="1.6" class="dot" data-country="${escapedC}" data-ctx="${ctx}" data-mean="${r.mean.toFixed(2)}" data-cilo="${r.ci_lo.toFixed(2)}" data-cihi="${r.ci_hi.toFixed(2)}" data-min="${r.min.toFixed(1)}" data-max="${r.max.toFixed(1)}"/>`;
     });
+
+    // ±N label LAST so it paints on top of every CI line and dot in this column.
+    if(yHi - yLo > 1){
+      const spanRanks = ranges[c].span;
+      if(spanRanks >= 1){
+        const labelAbove = yLo - 12;
+        const flipBelow = labelAbove < T + 10;
+        const labelY = flipBelow ? yHi + 22 : labelAbove;
+        const labelStr = `±${(spanRanks/2).toFixed(1)}`;
+        const lblW = labelStr.length * 6.2 + 6;
+        const lblH = 13;
+        // Solid white backdrop with subtle border so the label reads even where
+        // a CI line of the same colour passes through.
+        svg += `<rect x="${cx-lblW/2}" y="${labelY-lblH+2.5}" width="${lblW}" height="${lblH}" rx="3" fill="rgba(255,255,255,.72)" stroke="rgba(0,0,0,.08)" stroke-width="0.6"/>`;
+        svg += `<text x="${cx}" y="${labelY}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" font-weight="700" fill="${lineCol}" opacity="1">${labelStr}</text>`;
+      }
+    }
+
     svg += `</g>`;
   });
 
@@ -738,7 +757,7 @@ function renderUtilityDistribChart(){
   const maxSpan = Math.max(...ranges.map(r=>r.span));
 
   // Geometry: rows = 50 outcomes, x = rank 1..50
-  const W = 1200, H = 1540;
+  const W = 1200, H = 2000;
   const L = 240, R = 24, T = 32, B = 100;
   const plotW = W-L-R, plotH = H-T-B;
   const rowH = plotH / N;
@@ -787,7 +806,7 @@ function renderUtilityDistribChart(){
     // soft range capsule (horizontal pill — no end caps)
     const x0 = xRank(r.lo), x1 = xRank(r.hi);
     if(x1 - x0 > 2){
-      svg += `<rect x="${x0-4}" y="${y-5}" width="${(x1-x0)+8}" height="10" fill="url(#uintGrad)" rx="5"/>`;
+      svg += `<rect x="${x0-6}" y="${y-9}" width="${(x1-x0)+12}" height="18" fill="url(#uintGrad)" rx="9"/>`;
     }
     // invisible row hit area covering label + plot
     svg += `<rect x="0" y="${y-rowH/2}" width="${W}" height="${rowH}" fill="transparent" class="row-hit" data-outcome="${o.idx}" data-text="${escapedT}" data-cat="${escapeXML(o.category)}"/>`;
@@ -798,7 +817,7 @@ function renderUtilityDistribChart(){
       // Clamp mean to [ci_lo, ci_hi] (sub-pixel rank-discretization fixups)
       const dotRank = Math.min(ci.ci_hi, Math.max(ci.ci_lo, ci.mean));
       const x = xRank(dotRank);
-      const yj = y + (k-2)*1.6;
+      const yj = y + (k-2)*2.6;
       const xCiLo = xRank(ci.ci_lo);
       const xCiHi = xRank(ci.ci_hi);
       if(Math.abs(xCiHi - xCiLo) > 1.2){
@@ -1178,10 +1197,10 @@ function renderAblations(){
   html += `<div class="subpane ${activeSub==='paraphrase'?'on':''}" data-sub="paraphrase"><div style="border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-top:14px;background:rgba(29,78,216,.04)">
     ${chip('<span style="color:#1d4ed8">Paraphrasing wording</span>', 'Llama-3.3-70B | orig vs semantically-equivalent rewordings')}
     <details open style="margin-bottom:12px"><summary style="cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--ink-2)">Alternative-wording context-induction lines | <span class="diff" style="font-weight:600">highlighted tokens</span> mark every word changed relative to the original setup</summary>
-      <div class="tbl-wrap" style="margin-top:8px"><table class="tbl setup-ctx-tbl wording-tbl" style="min-width:720px">
-        <colgroup><col style="width:140px"><col style="width:33%"><col></colgroup>
+      <div class="tbl-wrap" style="margin-top:8px"><table class="tbl setup-ctx-tbl wording-tbl" style="table-layout:fixed;width:100%">
+        <colgroup><col style="width:118px"><col style="width:33%"><col></colgroup>
         <thead><tr>
-          <th style="width:140px">Context</th>
+          <th>Context</th>
           <th><span style="color:#7e22ce">⊤</span> {context line}</th>
           <th><span style="color:#0f766e">⊥</span> {task line}</th>
         </tr></thead>
@@ -1509,7 +1528,8 @@ function renderExtrinsicDistribChart(){
   // capsule indicator + per-context dots
   models.forEach((m,i)=>{
     const cx = xCenter(i);
-    const w  = Math.min(colW*0.5, 30);
+    // Capsule width matches the dot spread so the gradient pill encloses every dot.
+    const w  = Math.min(colW*0.72, 64);
     const yLo = yByRank(ranges[m].meanLo);
     const yHi = yByRank(ranges[m].meanHi);
     const lineCol = "#52525b";
@@ -1518,14 +1538,11 @@ function renderExtrinsicDistribChart(){
     svg += `<rect x="${L+colW*i}" y="${T}" width="${colW}" height="${plotH}" fill="transparent" class="col-hit" data-model="${escapedM}"/>`;
     // soft range capsule (gradient pill only — no end caps or spine)
     if(yHi - yLo > 1){
-      svg += `<rect x="${cx-w/2}" y="${yLo-3}" width="${w}" height="${yHi-yLo+6}" fill="url(#extIntGrad)" rx="${w/2}"/>`;
-      const spanRanks = ranges[m].span;
-      if(spanRanks >= 1){
-        svg += `<text x="${cx+w/2+4}" y="${(yLo+yHi)/2+3}" font-family="Consolas, monospace" font-size="10" font-weight="600" fill="${lineCol}" opacity="1">±${(spanRanks/2).toFixed(1)}</text>`;
-      }
+      svg += `<rect x="${cx-w/2}" y="${yLo-3}" width="${w}" height="${yHi-yLo+6}" fill="url(#extIntGrad)" rx="${Math.min(w/2,12)}"/>`;
     }
-    // per-context dots with horizontal jitter
-    const jit = [-w*0.40,-w*0.20,0,w*0.20,w*0.40];
+    // per-context dots — same width as the capsule so dots sit inside it.
+    const dotW = w;
+    const jit = [-dotW*0.40,-dotW*0.20,0,dotW*0.20,dotW*0.40];
     CONTEXTS.forEach((ctx,k)=>{
       const c = td[m]?.by_context?.[ctx]; if(!c) return;
       const yCiLo = yByRank(c.ci_lo), yCiHi = yByRank(c.ci_hi), ym = yByRank(c.mean);
@@ -1535,6 +1552,20 @@ function renderExtrinsicDistribChart(){
       svg += `<line x1="${x-2.5}" y1="${yCiHi}" x2="${x+2.5}" y2="${yCiHi}" stroke="${CTX_COLOR[ctx]}" stroke-width="1.6" stroke-opacity="1" stroke-linecap="round"/>`;
       svg += `<circle cx="${x}" cy="${ym}" r="5.2" fill="${CTX_COLOR[ctx]}" stroke="#ffffff" stroke-width="1.6" class="dot" data-model="${escapedM}" data-ctx="${ctx}" data-mean="${c.mean.toFixed(2)}" data-cilo="${c.ci_lo.toFixed(2)}" data-cihi="${c.ci_hi.toFixed(2)}" data-min="${c.min.toFixed(1)}" data-max="${c.max.toFixed(1)}"/>`;
     });
+    // ±N label LAST so it paints on top of every CI line and dot in this column.
+    if(yHi - yLo > 1){
+      const spanRanks = ranges[m].span;
+      if(spanRanks >= 1){
+        const labelAbove = yLo - 12;
+        const flipBelow = labelAbove < T + 10;
+        const labelY = flipBelow ? yHi + 22 : labelAbove;
+        const labelStr = `±${(spanRanks/2).toFixed(1)}`;
+        const lblW = labelStr.length * 6.2 + 6;
+        const lblH = 13;
+        svg += `<rect x="${cx-lblW/2}" y="${labelY-lblH+2.5}" width="${lblW}" height="${lblH}" rx="3" fill="rgba(255,255,255,.72)" stroke="rgba(0,0,0,.08)" stroke-width="0.6"/>`;
+        svg += `<text x="${cx}" y="${labelY}" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="700" fill="${lineCol}" opacity="1">${labelStr}</text>`;
+      }
+    }
     svg += `</g>`;
   });
   // x-axis labels
