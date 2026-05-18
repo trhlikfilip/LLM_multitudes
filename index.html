@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLMs Contain Multitudes — How deployment context reshapes model-level preferences</title>
+<meta name="description" content="Across 5 LLMs and 1M+ pairwise decisions, deployment context produces variation far larger than prompt paraphrasing and temperature controls.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!--
+  Council on fonts:
+   | display    → Kumbh Sans (subtle quirky cuts, friendly but technical)
+   | body / UI  → Kumbh Sans
+   | monospace  → system Consolas with safe fallbacks (no generic Google mono)
+-->
+<link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- Display fonts used by the cycling-letter animation on the hero word "Multitudes".
+     Curated: fonts whose individual letters render as a single complete glyph
+     (no stencil gaps, horizontal stripes, motion lines, shadow ghosts, or
+     highlight bars — all of which read as "broken" on a single isolated letter). -->
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Alfa+Slab+One&family=Anton&family=Audiowide&family=Bebas+Neue&family=Bowlby+One&family=Bungee&family=Caveat&family=Crimson+Text:ital@1&family=DM+Serif+Display&family=Fjalla+One&family=Karla:wght@700&family=Lobster&family=Lora:ital@1&family=Merriweather:ital,wght@1,700&family=Pacifico&family=Patrick+Hand&family=Permanent+Marker&family=Playfair+Display:ital,wght@1,700&family=Press+Start+2P&family=Righteous&family=Roboto+Mono:wght@700&family=Russo+One&family=Sacramento&family=Shadows+Into+Light&family=UnifrakturCook:wght@700&family=Yeseva+One&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────────────────────────
+   DESIGN TOKENS — dark canvas, amber accent, warm typographic stack
+   ───────────────────────────────────────────────────────────── */
+:root{
+  /* Light theme — indigo brand, high-contrast text + lines on white */
+  --bg:#ffffff;
+  --bg-2:#eef0f4;
+  --panel:#f7f8fa;
+  --panel-2:#e3e5ea;
+  --line:rgba(0,0,0,.16);
+  --line-2:rgba(0,0,0,.26);
+  --ink:#0d0d11;
+  --ink-2:#27272a;
+  --mute:#52525b;
+  --mute-2:#71717a;
+  --accent:#4338ca;
+  --accent-2:rgba(67,56,202,.10);
+  --good:#15803d;
+  --warn:#c2410c;
+  --crit:#b91c1c;
+  --north:#1d4ed8;
+  --south:#c2410c;
+  --neutral:#475569;
+  --news:#b45309;
+  --reddit:#b91c1c;
+  --school:#047857;
+  --vlog:#6d28d9;
+  --display:'Kumbh Sans',system-ui,sans-serif;
+  --sans:'Kumbh Sans',system-ui,-apple-system,sans-serif;
+  --mono:'Consolas','Liberation Mono','DejaVu Sans Mono',Menlo,'Cascadia Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;min-width:0}
+html{scroll-behavior:smooth;scroll-padding-top:60px;overflow-x:hidden;background:var(--bg)}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:14.5px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow-x:hidden;
+  min-width:200px;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(67,56,202,.04), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 90% 0%, rgba(29,78,216,.03), transparent 70%);
+  background-attachment:fixed;
+}
+a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line-2);transition:all .12s}
+a:hover{color:var(--accent);border-color:var(--accent)}
+img,svg{display:block;max-width:100%}
+button{font-family:inherit;cursor:pointer;background:transparent;border:none;color:inherit}
+
+/* ─── Top header (single bar; no breadcrumbs, no search) ─── */
+.nav{
+  position:sticky;top:0;z-index:50;
+  background:rgba(255,255,255,.85);
+  -webkit-backdrop-filter:saturate(180%) blur(14px);
+  backdrop-filter:saturate(180%) blur(14px);
+  border-bottom:1px solid var(--line);
+}
+.nav-inner{
+  max-width:1280px;margin:0 auto;padding:12px 20px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.nav-brand{
+  font-family:var(--display);font-weight:700;font-size:15px;color:var(--ink);letter-spacing:-.01em;
+  border:none;white-space:nowrap;
+}
+.nav-brand em{font-style:italic;font-weight:600;color:var(--accent)}
+.nav-rhs{display:flex;gap:8px;align-items:center}
+.btn{
+  padding:6px 12px;border:1px solid var(--line-2);border-radius:6px;
+  font-family:var(--sans);font-size:12.5px;color:var(--ink);background:transparent;cursor:pointer;
+  font-weight:500;line-height:1.4;
+}
+.btn:hover{background:rgba(0,0,0,.04)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+.btn.primary:hover{background:#3730a3}
+/* Active selector buttons (model / trait / context / anchor / view) — highlight with the accent across every section */
+.btn.active, .btn.on{
+  background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600;
+  box-shadow:0 0 0 1px var(--accent) inset, 0 1px 0 rgba(0,0,0,.25);
+}
+.btn.active:hover, .btn.on:hover{background:#3730a3}
+
+/* ─── Page shell (single column, no sidebar) ─── */
+.shell{max-width:1280px;margin:0 auto;padding:0 20px}
+
+/* ─── Section tab bar (the menu) ─── */
+/* ─── Level 1: section tabs ───
+   Large, bold-ish, fat 3px accent underline. Sticky to the top.
+   The strongest visual treatment in the hierarchy. */
+.tabbar{
+  position:sticky;top:54px;z-index:40;
+  background:rgba(255,255,255,.92);
+  -webkit-backdrop-filter:saturate(180%) blur(12px);
+  backdrop-filter:saturate(180%) blur(12px);
+  border-bottom:1px solid var(--line);
+  margin:0 -20px 28px;padding:0 20px;
+}
+.tabbar-inner{
+  display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.tabbar-inner::-webkit-scrollbar{display:none}
+.tabbar .t{
+  font-family:var(--display);font-size:14px;font-weight:600;color:var(--mute);
+  padding:16px 18px;cursor:pointer;border:none;background:transparent;
+  border-bottom:3px solid transparent;white-space:nowrap;letter-spacing:-.005em;
+  transition:color .12s,border-color .12s;
+  display:inline-flex;align-items:baseline;gap:8px;
+  flex-shrink:0;
+}
+.tabbar .t:hover{color:var(--ink)}
+.tabbar .t.on{color:var(--accent);border-bottom-color:var(--accent)}
+.tabbar .t .ct{font-family:var(--mono);font-size:10.5px;color:var(--mute-2);letter-spacing:.02em}
+.tabbar .t.on .ct{color:var(--accent)}
+/* ─── Tab status modifiers ───
+   .ready  — section is finalised; tab reads in full ink colour.
+   .draft  — section is still in progress; tab is faded so the user knows. */
+.tabbar .t.ready{color:var(--ink)}
+.tabbar .t.ready:hover{color:var(--accent)}
+.tabbar .t.draft{color:var(--mute-2);opacity:.55}
+.tabbar .t.draft:hover{color:var(--mute);opacity:.85}
+.tabbar .t.draft.on{color:var(--accent);opacity:1}
+
+/* ─── Section visibility ─── */
+.section{display:none;scroll-margin-top:120px}
+.section.on{display:block;animation:sectionIn .25s ease-out}
+@keyframes sectionIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ─── Hero ─── */
+.main{padding:36px 0 0;min-width:0}
+.hero{margin-bottom:36px}
+.pill{
+  display:inline-flex;align-items:center;gap:8px;padding:5px 11px;
+  border:1px solid var(--line);border-radius:14px;background:var(--bg-2);
+  font-family:var(--mono);font-size:11px;color:var(--mute);margin-bottom:18px;
+}
+.pill .pulse{
+  display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--good);
+  box-shadow:0 0 8px var(--good);
+  animation:pulse 1.6s infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.hero h1{
+  font-family:var(--display);font-weight:700;
+  font-size:clamp(32px,5.2vw,52px);
+  line-height:1.05;letter-spacing:-.025em;color:var(--ink);
+  background:linear-gradient(180deg,#18181b 0%,#52525b 110%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  margin-bottom:12px;
+}
+.hero h1 em{
+  font-style:italic;font-weight:600;
+  -webkit-text-fill-color:var(--accent);
+}
+/* ─── Cycling-letter animation for the word "Multitudes" in the hero ───
+   Each .cyc span swaps its font-family on an independent random timer.
+   We keep the accent colour and disable the gradient-clip so the swatch
+   colour reads cleanly regardless of which display font is active.
+
+   Height stability:
+   - Display fonts have wildly different vertical metrics. To stop the h1
+     box (and everything below it) from jumping every time a tall font is
+     swapped in, each letter is rendered as an inline-block with a fixed
+     1em height. overflow:visible lets the glyph render outside that box
+     visually without growing the line-box. */
+.hero h1{
+  /* Lock the per-line height so font swaps don't reflow content below,
+     but let the box grow when the text wraps at narrow viewports.
+     overflow:visible lets ornamental glyph metrics render outside the line
+     box without inflating it. */
+  line-height:1.05;
+  overflow:visible;
+}
+.hero h1 .word-cyc{
+  display:inline-block;
+  -webkit-text-fill-color:var(--accent);
+  font-weight:700;
+  height:1em;
+  line-height:1;
+  vertical-align:top;
+  overflow:visible;
+}
+.hero h1 .cyc{
+  display:inline-block;
+  font-weight:700;
+  transition:font-family .15s ease;
+  will-change:font-family;
+  height:1em;
+  line-height:1;
+  vertical-align:top;
+  overflow:visible;
+}
+.hero .sub{font-size:16px;color:var(--mute);line-height:1.55;max-width:720px}
+.hero .authors{
+  font-family:var(--mono);font-size:11.5px;color:var(--mute);
+  line-height:1.7;margin-top:20px;letter-spacing:.005em;
+}
+.hero .authors b{color:var(--ink-2);font-weight:500}
+
+/* ─── KPI strip ─── */
+.kpis{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:1px;
+  background:var(--line-2);border:1px solid var(--line);border-radius:10px;
+  overflow:hidden;margin-bottom:24px;
+  box-shadow:0 1px 2px rgba(15,15,30,.04);
+}
+/* When the grid breaks to fewer columns the trailing tile can be orphaned and
+   leave a visible empty grid cell (the gap colour shows through). Force the
+   final tile to span the full row so no empty cell appears. */
+@media(max-width:980px){
+  .kpis{grid-template-columns:repeat(3,1fr)!important}
+  /* Last tile alone in its row → span the whole row */
+  .kpis .kpi:last-child:nth-child(3n+1){grid-column:1/-1}
+  /* Last tile is 2nd in a row of 3 → span the remaining cell */
+  .kpis .kpi:last-child:nth-child(3n+2){grid-column:span 2}
+}
+@media(max-width:560px){
+  .kpis{grid-template-columns:repeat(2,1fr)!important}
+  .kpis .kpi:last-child:nth-child(odd){grid-column:1/-1}
+}
+@media(max-width:340px){
+  .kpis{grid-template-columns:1fr!important}
+  .kpis .kpi:last-child:nth-child(odd){grid-column:auto}
+}
+.kpi{background:var(--panel);padding:16px 18px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.kpi .lab{font-family:var(--mono);font-size:10.5px;color:var(--mute);letter-spacing:.02em}
+.kpi .v{font-family:var(--display);font-weight:600;font-size:28px;color:var(--ink);letter-spacing:-.02em;line-height:1}
+.kpi .v small{font-size:.55em;color:var(--mute);font-weight:500;margin-left:2px}
+.kpi .v em{font-style:normal;color:var(--accent)}
+
+/* ─── Section card head/meta ─── */
+.section-margin{margin-bottom:32px}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+.section-head .lhs{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.section-head .badge{
+  font-family:var(--mono);font-size:10.5px;color:var(--accent);
+  padding:3px 8px;border:1px solid rgba(67,56,202,.30);border-radius:5px;
+  background:var(--accent-2);letter-spacing:.02em;
+}
+.section-head h2{
+  font-family:var(--display);font-weight:700;
+  font-size:clamp(22px,2.8vw,28px);letter-spacing:-.015em;line-height:1.15;color:var(--ink);
+}
+.section-head h2 em{font-style:italic;font-weight:600;color:var(--accent)}
+.section-head .meta{font-family:var(--mono);font-size:11px;color:var(--mute);letter-spacing:.005em}
+
+/* ─── Subsection separator within a section ─── */
+.subsection-head{
+  display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  margin:36px 0 12px;padding-top:24px;border-top:1px dashed var(--line-2);
+}
+.subsection-head .badge.sub{
+  font-family:var(--mono);font-size:10px;color:var(--mute);
+  padding:2px 7px;border:1px solid var(--line-2);background:transparent;
+  border-radius:4px;letter-spacing:.04em;
+}
+.subsection-head h3{
+  font-family:var(--display);font-weight:600;font-size:18px;color:var(--ink);letter-spacing:-.01em;line-height:1.2;
+}
+.subsection-head h3 em{font-style:italic;color:var(--accent)}
+.subsection-head .meta{font-family:var(--mono);font-size:10.5px;color:var(--mute);margin-left:auto}
+
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  overflow:hidden;margin-bottom:14px;
+  box-shadow:0 1px 2px rgba(15,15,30,.04);
+}
+.card-h{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:13px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap;
+}
+.card-h h3{font-family:var(--display);font-weight:600;font-size:14.5px;color:var(--ink);letter-spacing:-.005em}
+.card-h .meta{font-family:var(--mono);font-size:11px;color:var(--mute)}
+.card-body{padding:16px 18px}
+.card-body.tight{padding:0}
+
+/* ─── Inline view-tabs (Chart / Table / Slope etc) ─── */
+.viewtabs{
+  display:inline-flex;padding:2px;border-radius:6px;
+  border:1px solid var(--line-2);background:var(--bg);
+}
+.viewtabs .vt{
+  font-family:var(--mono);font-size:11px;padding:4px 10px;
+  color:var(--mute);border-radius:4px;cursor:pointer;letter-spacing:.005em;
+}
+.viewtabs .vt:hover{color:var(--ink)}
+.viewtabs .vt.on{background:var(--panel-2);color:var(--ink)}
+
+/* Sub-section tabs within a section — switch which subsection is visible */
+/* ─── Level 2: subsection tabs ───
+   Pill-style segmented control inside a rounded container. Active pill gets
+   a soft fill + accent-coloured border. Lives one level inside a section. */
+.subtabs{
+  display:inline-flex;flex-wrap:wrap;gap:4px;
+  margin:8px 0 20px;padding:4px;
+  background:var(--bg-2);
+  border:1px solid var(--line);
+  border-radius:10px;
+}
+.subtabs .st{
+  padding:7px 14px;background:transparent;border:1px solid transparent;
+  border-radius:7px;color:var(--mute);
+  font-family:var(--mono);font-size:11.5px;font-weight:500;
+  cursor:pointer;letter-spacing:.01em;white-space:nowrap;
+  transition:color .12s,background .12s,border-color .12s;
+}
+.subtabs .st:hover{color:var(--ink-2);background:rgba(0,0,0,.025)}
+.subtabs .st.on{
+  color:var(--accent);
+  background:rgba(67,56,202,.10);
+  border-color:rgba(67,56,202,.35);
+}
+.subtabs .st .ct{font-family:var(--mono);font-size:10.5px;color:var(--mute-2);margin-left:6px;letter-spacing:.02em}
+.subtabs .st.on .ct{color:var(--accent)}
+
+/* ─── Level 3: sub-subsection tabs ───
+   Inline, text-only, thin 1px accent underline when active.
+   Lightest of the three; lives inside a subpane card. */
+.subtabs.lvl3{
+  display:flex;flex-wrap:wrap;gap:0;
+  padding:0;background:transparent;border:none;border-radius:0;
+  border-bottom:1px solid var(--line);
+  margin:6px 0 14px;
+}
+.subtabs.lvl3 .st{
+  padding:6px 10px 8px;border:none;border-radius:0;
+  border-bottom:1px solid transparent;margin-bottom:-1px;
+  font-family:var(--mono);font-size:11px;color:var(--mute-2);letter-spacing:.02em;
+}
+.subtabs.lvl3 .st:hover{color:var(--ink-2);background:transparent}
+.subtabs.lvl3 .st.on{
+  color:var(--accent);background:transparent;
+  border-bottom-color:var(--accent);
+}
+.subpane{display:none}
+.subpane.on{display:block;animation:sectionIn .2s ease-out}
+.view-pane{display:none}
+.view-pane.on{display:block}
+
+/* ─── Selector chip rows ─── */
+.controls{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;margin-bottom:14px}
+.controls .lbl{font-family:var(--mono);font-size:10.5px;color:var(--mute);letter-spacing:.02em;margin-right:6px}
+.chip{
+  font-family:var(--mono);font-size:11.5px;color:var(--ink-2);
+  padding:5px 10px;border:1px solid var(--line-2);border-radius:6px;background:var(--bg-2);
+  cursor:pointer;transition:all .12s;
+}
+.chip:hover{border-color:var(--mute);color:var(--ink)}
+.chip.on{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+
+/* ─── Findings band ─── */
+.findings{
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:6px 0;margin-bottom:32px;
+  box-shadow:0 1px 2px rgba(15,15,30,.04);
+}
+.finding{
+  display:grid;grid-template-columns:60px minmax(0,1fr) 200px;gap:24px;align-items:center;
+  padding:16px 24px;border-bottom:1px dashed var(--line);
+}
+.finding:last-child{border-bottom:none}
+.finding .num{
+  font-family:var(--mono);font-size:11px;color:var(--mute);letter-spacing:.04em;
+}
+.finding .body{font-size:15px;line-height:1.45;color:var(--ink-2)}
+.finding .body strong{color:var(--ink);font-weight:600;background:linear-gradient(180deg,transparent 60%,rgba(67,56,202,.18) 60%);padding:1px 4px;border-radius:3px}
+.finding .body em{font-style:italic;color:var(--accent)}
+.finding .stat{text-align:right}
+.finding .stat .v{font-family:var(--display);font-weight:600;font-size:28px;color:var(--ink);letter-spacing:-.02em;line-height:1}
+.finding .stat .v em{font-style:normal;color:var(--accent)}
+.finding .stat .l{font-family:var(--mono);font-size:10px;color:var(--mute);letter-spacing:.02em;margin-top:4px;text-transform:lowercase}
+@media(max-width:780px){.finding{grid-template-columns:1fr;gap:8px} .finding .stat{text-align:left}}
+
+/* ─── Setup context strip ─── */
+/* ─── Setup pipeline diagram — robust to screen size ─── */
+.setup-flow{
+  display:flex;align-items:stretch;gap:14px;margin:8px 0 4px;
+  flex-wrap:wrap;justify-content:center;
+}
+.setup-flow .prompt-block{
+  flex:1 1 360px;min-width:min(280px,100%);max-width:520px;
+  border-radius:10px;overflow:hidden;
+  border:1px solid var(--line);
+  display:flex;flex-direction:column;
+}
+.setup-flow .prompt-row{
+  font-family:var(--mono);font-size:13px;padding:14px 18px;line-height:1.35;
+  display:flex;align-items:center;flex-wrap:wrap;gap:4px;
+}
+.setup-flow .prompt-row code{font-family:var(--mono);color:var(--ink-2);font-size:13px;background:transparent;padding:0}
+.setup-flow .prompt-row .sym{font-weight:700;font-size:14px;color:var(--accent);margin-right:6px}
+.setup-flow .prompt-row.context{background:#f5f0ff;color:#5b21b6;border-bottom:1px solid var(--line)}
+.setup-flow .prompt-row.context .sym{color:#7e22ce}
+.setup-flow .prompt-row.context code{color:#6b21a8}
+.setup-flow .prompt-row.question{background:var(--bg-2);color:var(--ink);font-size:13.5px;padding:18px;justify-content:center}
+.setup-flow .prompt-row.task{background:#ecfdf5;color:#0f766e;border-top:1px solid var(--line)}
+.setup-flow .prompt-row.task .sym{color:#0f766e}
+.setup-flow .prompt-row.task code{color:#115e59}
+.setup-flow .opt{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:5px;font-weight:700;
+  font-family:var(--display);font-size:13px;color:#fff;
+  box-shadow:0 1px 0 rgba(0,0,0,.18);
+}
+.setup-flow .opt-a{background:var(--north)}
+.setup-flow .opt-b{background:var(--south)}
+
+.setup-flow .flow-arrow{
+  font-family:var(--sans);font-size:22px;color:var(--mute);
+  align-self:center;padding:0 4px;
+}
+.setup-flow .llm-block{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:8px 14px;min-width:74px;
+}
+.setup-flow .llm-block .bot{font-size:42px;line-height:1}
+.setup-flow .llm-block .bot-lab{font-family:var(--display);font-weight:600;color:var(--ink-2);font-size:13px;margin-top:6px;letter-spacing:.02em}
+.setup-flow .output-block{
+  flex:1 1 320px;min-width:min(260px,100%);max-width:440px;
+  display:flex;align-items:stretch;
+  border-radius:10px;overflow:hidden;
+  border:1px solid var(--line);background:var(--bg-2);
+}
+.setup-flow .output-block .out-col{
+  flex:1 1 0;padding:18px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;
+}
+.setup-flow .output-block .out-h{font-family:var(--display);font-weight:600;font-size:15px;color:var(--ink);letter-spacing:-.005em;line-height:1.15;text-align:center}
+.setup-flow .output-block .out-sub{font-family:var(--mono);font-size:12px;color:var(--mute);display:flex;align-items:center;justify-content:center;gap:4px}
+.setup-flow .output-block .out-divider{width:1px;background:var(--line)}
+@media(max-width:880px){
+  .setup-flow{flex-direction:column;align-items:stretch}
+  .setup-flow .flow-arrow{transform:rotate(90deg);align-self:center;padding:6px 0;font-size:18px}
+  /* In column mode the flex-basis (originally meant as desired *width*) would
+     become a desired *height* and pad the box with empty space below content.
+     Reset to auto so each block shrinks to fit its rows. */
+  .setup-flow .prompt-block, .setup-flow .output-block{max-width:none;flex:0 0 auto}
+}
+/* At narrow widths the output-block's two paired columns (reasoning + final
+   answer) start to cramp; stack them so each gets full width and the divider
+   becomes a horizontal rule. */
+@media(max-width:460px){
+  .setup-flow .output-block{flex-direction:column}
+  .setup-flow .output-block .out-divider{width:auto;height:1px}
+}
+
+/* ─── Setup context table ─── */
+.setup-ctx-tbl td{vertical-align:middle;padding:12px 14px;text-align:left}
+.setup-ctx-tbl td.mono{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);line-height:1.5;text-align:left}
+.setup-ctx-tbl td.mono.mute{color:var(--mute);font-style:italic}
+.setup-ctx-tbl td.mono b{color:var(--ink);font-weight:600}
+.setup-ctx-tbl thead th{font-family:var(--mono);font-size:11px;color:var(--mute);padding:10px 14px;text-align:left;background:var(--bg-2);border-bottom:1px solid var(--line)}
+.setup-ctx-tbl .ctx-pill{
+  display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;
+  background:var(--bg-2);border:1px solid var(--line);
+  font-family:var(--mono);font-size:11.5px;color:var(--c);font-weight:500;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+}
+.setup-ctx-tbl .ctx-pill .ico{font-size:14px;filter:saturate(.85)}
+
+.ctx-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line-2);border-radius:10px;overflow:hidden;border:1px solid var(--line);box-shadow:0 1px 2px rgba(15,15,30,.04)}
+@media(max-width:780px){.ctx-strip{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:380px){.ctx-strip{grid-template-columns:1fr}}
+.ctx-card{background:var(--panel);padding:14px 16px}
+.ctx-card .ch{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ctx-card .dot{width:9px;height:9px;border-radius:50%}
+.ctx-card .nm{font-family:var(--display);font-weight:600;font-size:13.5px;color:var(--ink);letter-spacing:-.005em}
+.ctx-card .line{font-family:var(--mono);font-size:11px;color:var(--mute);line-height:1.45;margin-top:5px}
+.ctx-card .line.t{color:var(--mute-2)}
+
+/* ─── Context legend (for charts) ─── */
+.ctx-legend{
+  display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;
+  font-family:var(--mono);font-size:11px;color:var(--mute);margin-bottom:14px;
+}
+.ctx-legend .item{display:inline-flex;align-items:center;gap:6px}
+.ctx-legend .dt{width:9px;height:9px;border-radius:50%;display:inline-block}
+.ctx-legend .swatch{display:inline-block;width:14px;height:8px;border-radius:2px;vertical-align:middle}
+.ctx-legend .bar{display:inline-block;width:2px;height:11px;background:var(--mute);vertical-align:middle}
+
+/* ─── Bar-style row chart for sig counts etc ─── */
+.bar-stat{display:flex;align-items:center;gap:12px;margin:6px 0;font-family:var(--mono);font-size:12px}
+.bar-stat .nm{width:140px;flex-shrink:0;color:var(--ink-2);font-size:12.5px}
+.bar-stat .tr{flex:1;height:18px;background:rgba(0,0,0,.06);position:relative;border-radius:3px;overflow:hidden}
+.bar-stat .fl{position:absolute;left:0;top:0;height:100%;background:var(--accent);border-radius:2px}
+.bar-stat .vl{width:64px;text-align:right;color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
+
+/* ─── Tooltip affordance ───
+   Any header/label that carries a `data-tt` definition shows the standard
+   browser help cursor + a subtle dotted underline so users discover the
+   hover-for-definition affordance without trial-and-error. Data cells inside
+   heatmaps and svg rects keep their default cursor (the colour wash already
+   reads as "interactive"). */
+th[data-tt], td.sub-head[data-tt], .tbl tbody td[data-tt]:first-child,
+.bar-stat .nm[data-tt]{
+  cursor:help;
+  text-decoration:underline dotted rgba(0,0,0,.22);
+  text-underline-offset:3px;
+  text-decoration-thickness:1px;
+}
+.tbl.compare-tbl tbody tr.sub-head td[data-tt]{
+  cursor:help;
+  text-decoration:underline dotted rgba(0,0,0,.22);
+  text-underline-offset:3px;
+}
+/* In the bar-chart label div, the dotted underline should only sit under the
+   bold name (not the small grey note below it). Reset on the wrapper, apply
+   to the first child only. */
+.bar-stat .nm[data-tt]{text-decoration:none}
+.bar-stat .nm[data-tt] > div:first-child{
+  text-decoration:underline dotted rgba(0,0,0,.22);
+  text-underline-offset:3px;
+  text-decoration-thickness:1px;
+}
+
+/* ─── Tooltip — dark overlay, high-contrast typography ─── */
+.tip{
+  position:fixed;z-index:200;pointer-events:none;
+  background:#1f1f23;color:#f4f4f5;padding:9px 12px;
+  font-family:var(--mono);font-size:11.5px;line-height:1.45;letter-spacing:.005em;
+  border:1px solid rgba(255,255,255,.10);border-radius:6px;
+  opacity:0;transform:translate(-50%,-100%);
+  transition:opacity .12s;box-shadow:0 10px 28px rgba(15,15,30,.30);
+  min-width:160px;max-width:340px;white-space:normal;overflow-wrap:break-word;text-align:left;
+}
+@media(max-width:380px){.tip{max-width:calc(100vw - 32px);min-width:0}}
+.tip.show{opacity:1}
+.tip .tt{display:block;font-weight:600;color:#a5b4fc;letter-spacing:.005em;font-size:11px;line-height:1.3;margin-bottom:5px}
+.tip .tn{display:block;color:#f4f4f5;font-weight:500;font-size:12.5px;line-height:1.4}
+.tip .ts{display:block;color:#a1a1aa;margin-top:5px;font-size:11px;line-height:1.4}
+.tip .tt:empty,.tip .tn:empty,.tip .ts:empty{display:none}
+.tip::after{
+  content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:#1f1f23;border-bottom:0;
+}
+.tip[data-dir="below"]{transform:translate(-50%,0)}
+.tip[data-dir="below"]::after{bottom:auto;top:-5px;border-top:0;border-bottom-color:#1f1f23}
+
+/* ─── SVG hover ─── */
+.dot{cursor:pointer;transition:filter .12s}
+.dot:hover{filter:drop-shadow(0 0 5px rgba(67,56,202,.55))}
+.col-hit,.row-hit{cursor:pointer}
+
+/* ─── Tables ─── */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl{
+  width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px;min-width:520px;
+  font-variant-numeric:tabular-nums;
+}
+.tbl th{
+  text-align:right;padding:9px 12px;border-bottom:1px solid var(--line-2);
+  color:var(--mute);font-weight:500;font-size:10.5px;letter-spacing:.04em;background:var(--bg-2);
+}
+.tbl th:first-child,.tbl td:first-child{text-align:left;color:var(--ink)}
+.tbl td{padding:8px 12px;text-align:right;border-bottom:1px solid var(--line);color:var(--ink-2)}
+.tbl tbody tr:last-child td{border-bottom:1px solid var(--line-2)}
+.tbl tbody tr.avg td{background:rgba(67,56,202,.04);font-weight:600;color:var(--ink)}
+.tbl tbody tr:hover td{background:rgba(67,56,202,.045)}
+.tbl tbody tr.avg:hover td{background:rgba(67,56,202,.08)}
+
+/* ─── Compare table modifier — used in Paraphrasing / Temperature / No-reasoning ─── */
+.tbl.compare-tbl tbody tr.sub-head td{
+  background:transparent;padding:14px 12px 4px;color:var(--mute);
+  font-family:var(--mono);font-size:11px;letter-spacing:.02em;
+  font-weight:600;border-bottom:1px solid var(--line);text-align:left;
+}
+.tbl.compare-tbl tbody tr.sub-head:hover td{background:transparent}
+.tbl.compare-tbl tbody td.indent{padding-left:24px;color:var(--ink-2);font-weight:500}
+.tbl.compare-tbl thead th{padding:8px 12px;background:transparent;border-bottom:1px solid var(--line-2)}
+
+/* Temperature reference row (t=1) — soft indigo emphasis */
+.tbl.temp-tbl tbody tr.ref-row td{background:rgba(67,56,202,.06)}
+.tbl.temp-tbl tbody tr.ref-row:hover td{background:rgba(67,56,202,.10)}
+
+/* Wording pair table — alternative context-induction lines.
+   .diff highlights every token reworded from the original setup. */
+.tbl.wording-tbl td{vertical-align:top;padding:11px 14px;line-height:1.55}
+.tbl.wording-tbl td.mono{font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+.diff{
+  background:rgba(67,56,202,.12);
+  color:var(--accent);
+  font-weight:600;
+  padding:0 3px;
+  border-radius:3px;
+}
+
+/* ─── Chart wrapper ─── */
+.chart{position:relative;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+@media(max-width:780px){.chart svg{min-width:680px}}
+@media(max-width:340px){.chart svg{min-width:520px}}
+
+/* ─── Row-2 grid for paired cards ─── */
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:960px){.row-2{grid-template-columns:1fr}}
+
+/* ─── Cite block ─── */
+.cite-block{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px 26px;margin-top:32px;box-shadow:0 1px 2px rgba(15,15,30,.04)}
+.cite-block h3{font-family:var(--display);font-weight:600;font-size:18px;color:var(--ink);margin-bottom:14px;letter-spacing:-.005em}
+.cite-block pre{
+  background:var(--bg);border:1px solid var(--line);border-radius:8px;
+  padding:14px 16px;font-family:var(--mono);font-size:11.5px;color:var(--ink-2);
+  line-height:1.6;white-space:pre-wrap;overflow-x:auto;
+}
+
+/* ─── Footer ─── */
+.foot{padding:24px 0;border-top:1px solid var(--line);margin-top:36px;font-family:var(--mono);font-size:11px;color:var(--mute);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px}
+.foot a{color:var(--ink-2);border-color:var(--line)}
+.foot-lhs{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.foot-divider{width:1px;height:22px;background:var(--line);display:inline-block}
+.cam-mark{display:inline-flex;align-items:center;text-decoration:none;border:none;line-height:1}
+.cam-mark:hover{opacity:.85}
+.cam-mark img{height:30px;width:auto;display:block}
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ Top header ═══════════════════════════ -->
+<nav class="nav">
+  <div class="nav-inner" style="justify-content:flex-end">
+    <div class="nav-rhs">
+      <a href="#" class="btn" style="text-decoration:none" data-noop>📄 Full paper ↗</a>
+      <a href="https://huggingface.co/datasets/LLM-multitudes-neurips-2026/LLM-Multitudes" target="_blank" class="btn primary" style="text-decoration:none">🤗 Dataset ↗</a>
+    </div>
+  </div>
+</nav>
+
+<div class="shell">
+
+  <main class="main">
+
+    <a id="top"></a>
+    <section class="hero">
+      <h1>LLMs Contain <span class="word-cyc"><span class="cyc">M</span><span class="cyc">u</span><span class="cyc">l</span><span class="cyc">t</span><span class="cyc">i</span><span class="cyc">t</span><span class="cyc">u</span><span class="cyc">d</span><span class="cyc">e</span><span class="cyc">s</span></span></h1>
+      <p class="sub">Across five large language models and 1M+ pairwise decisions, we characterise how <b>deployment context</b> reshapes model-level preferences and values, and show that the effect dominates over prompt paraphrasing, sampling temperature, and the presence or absence of in-context reasoning.</p>
+      <div class="authors">
+        <b>Filip Trhlik</b><sup>1,2</sup> | <b>Aoife O'Flynn</b><sup>1,3</sup> | <b>Angela Yu</b><sup>4</sup> | <b>Arduin Findeis</b><sup>1</sup> | <b>Paula Buttery</b><sup>1,2</sup><br>
+        <sup>1</sup>University of Cambridge | <sup>2</sup>ALTA Institute | <sup>3</sup>Leverhulme CFI | <sup>4</sup>Microsoft UK
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════ Section tab bar ═══════════════════════════ -->
+    <nav class="tabbar">
+      <div class="tabbar-inner">
+        <button class="t on ready" data-sec="setup">Setup</button>
+        <button class="t ready" data-sec="countries">Country preferences</button>
+        <button class="t ready" data-sec="utilities">Utility elicitation</button>
+        <button class="t draft" data-sec="ablations">Ablations</button>
+        <button class="t draft" data-sec="extrinsic">Extrinsic traits</button>
+        <button class="t draft" data-sec="cite">Cite</button>
+      </div>
+    </nav>
+
+    <!-- ═══════════════════════════ Setup ═══════════════════════════ -->
+    <section class="section on" id="setup">
+      <div class="section-head">
+        <div class="lhs">
+          <h2>Experimental <em>setup</em></h2>
+        </div>
+      </div>
+
+      <!-- KPI strip — experimental scale -->
+      <div class="kpis" style="margin-bottom:24px">
+        <div class="kpi"><div class="lab">LLMs</div><div class="v">5</div></div>
+        <div class="kpi"><div class="lab">deployment contexts</div><div class="v">5</div></div>
+        <div class="kpi"><div class="lab">countries | 6 traits</div><div class="v">15</div></div>
+        <div class="kpi"><div class="lab">outcomes | 6 domains</div><div class="v">50</div></div>
+        <div class="kpi"><div class="lab">pairwise decisions</div><div class="v">1M<small>+</small></div></div>
+      </div>
+
+      <!-- ─── Pipeline diagram — context line + pairwise question + task line → LLM → reasoning + answer ─── -->
+      <div class="setup-flow">
+        <div class="prompt-block">
+          <div class="prompt-row context">
+            <span class="sym">⊤</span> <code>{context line}</code>
+          </div>
+          <div class="prompt-row question">
+            Specific pairwise question:&nbsp;
+            <span class="opt opt-a">A</span>&nbsp;or&nbsp;
+            <span class="opt opt-b">B</span>
+          </div>
+          <div class="prompt-row task">
+            <span class="sym">⊥</span> <code>{task line}</code>
+          </div>
+        </div>
+
+        <div class="flow-arrow" aria-hidden="true">→</div>
+
+        <div class="llm-block">
+          <div class="bot">🤖</div>
+          <div class="bot-lab">LLM</div>
+        </div>
+
+        <div class="flow-arrow" aria-hidden="true">→</div>
+
+        <div class="output-block">
+          <div class="out-col reasoning">
+            <div class="out-h">In-context Reasoning</div>
+            <div class="out-sub">768 tokens</div>
+          </div>
+          <div class="out-divider"></div>
+          <div class="out-col answer">
+            <div class="out-h">Final answer:</div>
+            <div class="out-sub">
+              <span class="opt opt-a">A</span>&nbsp;or&nbsp;
+              <span class="opt opt-b">B</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Context-induction table (5 deployment framings) ─── -->
+      <div class="card" style="margin-top:24px">
+        <div class="card-h">
+          <h3>Context-induction lines</h3>
+          <span class="meta">each pairwise prompt is bracketed by the ⊤ context line and the ⊥ task line</span>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="tbl-wrap"><table class="tbl setup-ctx-tbl" style="min-width:680px">
+            <thead><tr>
+              <th style="width:140px">Context</th>
+              <th><span style="color:#7e22ce">⊤</span> {context line}</th>
+              <th><span style="color:#0f766e">⊥</span> {task line}</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="ctx-pill" style="--c:var(--neutral)"><span class="ico">📝</span>Neutral</span></td>
+                <td class="mono mute">(none)</td>
+                <td class="mono">Write a comparison and declare which option you prefer.</td>
+              </tr>
+              <tr>
+                <td><span class="ctx-pill" style="--c:var(--news)"><span class="ico">📰</span>News</span></td>
+                <td class="mono">You are writing a <b>news article</b>.</td>
+                <td class="mono">Write a <b>news article</b> and declare which option you prefer.</td>
+              </tr>
+              <tr>
+                <td><span class="ctx-pill" style="--c:var(--reddit)"><span class="ico">💬</span>Reddit</span></td>
+                <td class="mono">You are writing a <b>Reddit post</b>.</td>
+                <td class="mono">Write a <b>Reddit post</b> arguing your position and declare which option you prefer.</td>
+              </tr>
+              <tr>
+                <td><span class="ctx-pill" style="--c:var(--school)"><span class="ico">🎓</span>School</span></td>
+                <td class="mono">You are writing a <b>school essay</b>.</td>
+                <td class="mono">Write a <b>school essay analysis</b> and declare which option you prefer.</td>
+              </tr>
+              <tr>
+                <td><span class="ctx-pill" style="--c:var(--vlog)"><span class="ico">🎬</span>Vlog</span></td>
+                <td class="mono">You are writing a <b>vlog script</b>.</td>
+                <td class="mono">Write a <b>vlog script</b> and declare which option you prefer.</td>
+              </tr>
+            </tbody>
+          </table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════ Country preferences ═══════════════════════════ -->
+    <section class="section" id="countries">
+      <div class="section-head">
+        <div class="lhs">
+          <h2>Country preferences shift <em>systematically.</em></h2>
+        </div>
+        <div class="meta">15 countries | 6 traits | 20 repeats | 126,000 prompts</div>
+      </div>
+
+      <!-- compact key-row -->
+      <div class="kpis" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
+        <div class="kpi"><div class="lab">(country, trait) pairs sig.</div><div class="v">76.7<em>%</em></div></div>
+        <div class="kpi"><div class="lab">CMH cells sig. (p&lt;0.05)</div><div class="v">37<em>%</em></div></div>
+        <div class="kpi"><div class="lab">avg N–S swing | subj.</div><div class="v">1.9</div></div>
+      </div>
+
+      <nav class="subtabs">
+        <button class="st on" data-sub="ranks">Rank distribution</button>
+        <button class="st" data-sub="cmh">Significance</button>
+        <button class="st" data-sub="ns">North–South gap</button>
+        <button class="st" data-sub="intercountry">Inter-country variation</button>
+        <button class="st" data-sub="reasoning">Reasoning analysis</button>
+      </nav>
+
+      <!-- Country distribution card -->
+      <div class="subpane on" data-sub="ranks">
+      <div class="card">
+        <div class="card-h">
+          <h3>Per-country rank distribution</h3>
+          <div style="display:flex;gap:14px;align-items:center">
+            <div class="viewtabs" data-target="country"><span class="vt on" data-view="chart">Chart</span><span class="vt" data-view="table">Table</span></div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="ctx-legend">
+            <div class="item"><span class="dt" style="background:var(--neutral)"></span>Neutral</div>
+            <div class="item"><span class="dt" style="background:var(--news)"></span>News</div>
+            <div class="item"><span class="dt" style="background:var(--reddit)"></span>Reddit</div>
+            <div class="item"><span class="dt" style="background:var(--school)"></span>School</div>
+            <div class="item"><span class="dt" style="background:var(--vlog)"></span>Vlog</div>
+            <div class="item" style="margin-left:auto;color:var(--mute)"><span class="bar"></span>&nbsp;95% CI</div>
+          </div>
+          <div class="controls">
+            <span class="lbl">Model</span>
+            <div id="country-model-btns" style="display:inline-flex;gap:6px;flex-wrap:wrap"></div>
+          </div>
+          <div class="controls">
+            <span class="lbl">Trait</span>
+            <div id="country-trait-btns" style="display:inline-flex;gap:6px;flex-wrap:wrap"></div>
+          </div>
+          <div class="view-pane on" data-view="chart">
+            <div class="chart" id="country-distrib-chart"></div>
+          </div>
+          <div class="view-pane" data-view="table">
+            <div id="country-distrib-table" class="tbl-wrap"></div>
+          </div>
+        </div>
+      </div>
+      </div><!-- /subpane ranks -->
+
+      <div class="subpane" data-sub="cmh">
+      <!-- Two complementary tests:
+           1. decision-level CMH (per-cell)
+           2. rank-level BH-FDR Mann-Whitney (per (country, trait) pair) -->
+      <div class="card">
+        <div class="card-h">
+          <h3>Decision-level CMH significance</h3>
+          <span class="meta">cells out of 60 | p&lt;0.05</span>
+        </div>
+        <div class="card-body">
+          <div id="cmh-significance"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="card-h">
+          <h3>BH-FDR Mann-Whitney rank test</h3>
+          <span class="meta">per-repeat country rankings | BH-FDR α = 0.05</span>
+        </div>
+        <div class="card-body">
+          <div id="mw-significance"></div>
+        </div>
+      </div>
+      </div><!-- /subpane cmh -->
+
+      <div class="subpane" data-sub="ns">
+      <div class="subsection-head">
+        <h3>North–South ranking gap shifts <em>systematically</em> across contexts.</h3>
+        <span class="meta">95% bootstrap CI</span>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <h3>North–South gap, subjective traits</h3>
+          <span class="meta">mean Global-South rank − mean Global-North rank</span>
+        </div>
+        <div class="card-body">
+          <div class="chart" id="ns-gap-chart"></div>
+        </div>
+      </div>
+      </div><!-- /subpane ns -->
+
+      <div class="subpane" data-sub="intercountry">
+        <div class="card">
+          <div class="card-body">
+            <div id="intercountry-root"></div>
+          </div>
+        </div>
+      </div><!-- /subpane intercountry -->
+
+      <div class="subpane" data-sub="reasoning">
+        <div id="reasoning-root-country"></div>
+      </div><!-- /subpane reasoning -->
+    </section>
+
+    <!-- ═══════════════════════════ Utility ═══════════════════════════ -->
+    <section class="section" id="utilities">
+      <div class="section-head">
+        <div class="lhs">
+          <h2>Broad ordering holds. <em>Fine-grained rankings do not.</em></h2>
+        </div>
+        <div class="meta">50 outcomes | 6 domains | 10 repeats | 122,500 votes</div>
+      </div>
+
+      <div class="kpis" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
+        <div class="kpi"><div class="lab">outcomes shift ≥1 ctx-pair</div><div class="v">61.2<em>%</em></div></div>
+        <div class="kpi"><div class="lab">(model × outcome × pair) cells</div><div class="v">22.0<em>%</em></div></div>
+        <div class="kpi"><div class="lab">median exchange-rate shift</div><div class="v">2.47<em>×</em></div></div>
+      </div>
+
+      <nav class="subtabs">
+        <button class="st on" data-sub="ranks">Rank distribution</button>
+        <button class="st" data-sub="significance">Significance</button>
+        <button class="st" data-sub="exchange">Cardinal exchange rates</button>
+        <button class="st" data-sub="reasoning">Reasoning analysis</button>
+      </nav>
+
+      <div class="subpane on" data-sub="ranks">
+      <div class="card">
+        <div class="card-h">
+          <h3>Utility rank distribution | all 50 outcomes</h3>
+          <div style="display:flex;gap:14px;align-items:center">
+            <div class="viewtabs" data-target="utility"><span class="vt on" data-view="chart">Chart</span><span class="vt" data-view="table">Table</span></div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="ctx-legend">
+            <div class="item"><span class="dt" style="background:var(--neutral)"></span>Neutral</div>
+            <div class="item"><span class="dt" style="background:var(--news)"></span>News</div>
+            <div class="item"><span class="dt" style="background:var(--reddit)"></span>Reddit</div>
+            <div class="item"><span class="dt" style="background:var(--school)"></span>School</div>
+            <div class="item"><span class="dt" style="background:var(--vlog)"></span>Vlog</div>
+            <div class="item" style="margin-left:auto;color:var(--mute)"><span class="bar"></span>&nbsp;95% CI</div>
+          </div>
+          <div class="controls">
+            <span class="lbl">Model</span>
+            <div id="utility-model-btns" style="display:inline-flex;gap:6px;flex-wrap:wrap"></div>
+          </div>
+          <div class="view-pane on" data-view="chart">
+            <div class="chart" id="utility-distrib-chart"></div>
+          </div>
+          <div class="view-pane" data-view="table">
+            <div id="utility-distrib-table" class="tbl-wrap"></div>
+          </div>
+        </div>
+      </div>
+
+      </div><!-- /subpane ranks -->
+
+      <div class="subpane" data-sub="significance">
+      <div class="card">
+        <div class="card-h">
+          <h3>BH-FDR Mann-Whitney rank test</h3>
+          <span class="meta">per-repeat outcome rankings | BH-FDR α = 0.05</span>
+        </div>
+        <div class="card-body"><div id="utility-mw-significance"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-h">
+          <h3>Per-domain Spearman ρ<sub>min</sub></h3>
+          <span class="meta">worst pair across contexts</span>
+        </div>
+        <div class="card-body tight"><div id="utility-spearman-heatmap" style="padding:14px 18px"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-h">
+          <h3>Outcomes with ≥1 sig. shift</h3>
+          <span class="meta">out of 50 per model | BH-FDR</span>
+        </div>
+        <div class="card-body">
+          <div id="utility-sig-bar"></div>
+        </div>
+      </div>
+      </div><!-- /subpane significance -->
+
+      <div class="subpane" data-sub="exchange">
+      <div class="subsection-head">
+        <h3>Cardinal exchange rates wobble by <em>2.47×</em> at the median.</h3>
+        <span class="meta">1,176 pairs | max/min e<sup>μ<sub>A</sub>−μ<sub>B</sub></sup></span>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <h3>All-pairs |μ<sub>A</sub> / μ<sub>B</sub>| shift across 5 contexts</h3>
+          <span class="meta">per pair: max<sub>c</sub>|μ<sub>A</sub>/μ<sub>B</sub>| / min<sub>c</sub>|μ<sub>A</sub>/μ<sub>B</sub>|</span>
+        </div>
+        <div class="card-body tight"><div id="exchange-table" style="padding:14px 18px"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-h">
+          <h3>Within-domain median exchange-rate shift</h3>
+          <span class="meta">per (model, domain)</span>
+        </div>
+        <div class="card-body tight"><div id="ex-domain-heatmap" style="padding:14px 18px"></div></div>
+      </div>
+      </div><!-- /subpane exchange -->
+
+      <div class="subpane" data-sub="reasoning">
+        <div id="reasoning-root-utility"></div>
+      </div><!-- /subpane reasoning -->
+    </section>
+
+    <!-- ═══════════════════════════ Ablations ═══════════════════════════ -->
+    <section class="section" id="ablations">
+      <div class="section-head">
+        <div class="lhs">
+          <h2>Context outweighs <em>incidental perturbations.</em></h2>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <h3>Significant cells per perturbation type</h3>
+          <span class="meta">CMH p&lt;0.05 | same model | same statistic</span>
+        </div>
+        <div class="card-body">
+          <div id="ablations-root"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════ Extrinsic traits ═══════════════════════════ -->
+    <section class="section" id="extrinsic">
+      <div class="section-head">
+        <div class="lhs">
+          <h2>Trait rankings shift <em>across contexts.</em></h2>
+        </div>
+        <div class="meta">9 LLMs | 100 topics | 5 contexts | Big Five + Ekman 6</div>
+      </div>
+
+      <nav class="subtabs">
+        <button class="st on" data-sub="ranks">Rank distribution</button>
+        <button class="st" data-sub="stability">Per-trait stability</button>
+      </nav>
+
+      <div class="subpane on" data-sub="ranks">
+        <div class="card">
+          <div class="card-h">
+            <h3>Per-trait rank distribution across 5 deployment contexts</h3>
+            <span class="meta">9 models ranked per topic, then aggregated | 95% bootstrap CI</span>
+          </div>
+          <div class="card-body">
+            <div class="ctx-legend">
+              <div class="item"><span class="dt" style="background:var(--neutral)"></span>Neutral</div>
+              <div class="item"><span class="dt" style="background:var(--news)"></span>News</div>
+              <div class="item"><span class="dt" style="background:var(--reddit)"></span>Reddit</div>
+              <div class="item"><span class="dt" style="background:var(--school)"></span>School</div>
+              <div class="item"><span class="dt" style="background:var(--vlog)"></span>Vlog</div>
+              <div class="item" style="margin-left:auto;color:var(--mute)"><span class="bar"></span>&nbsp;95% CI</div>
+            </div>
+            <div class="controls">
+              <span class="lbl">Trait</span>
+              <div id="extrinsic-trait-btns" style="display:inline-flex;gap:6px;flex-wrap:wrap"></div>
+            </div>
+            <div class="chart" id="extrinsic-distrib-chart"></div>
+          </div>
+        </div>
+      </div><!-- /subpane ranks -->
+
+      <div class="subpane" data-sub="stability">
+        <div class="card">
+          <div class="card-h">
+            <h3>Per-trait rank stability across contexts</h3>
+            <span class="meta">Kendall's W, Spearman ρ, Jaccard | 300-shuffle permutation null | hover a column header for the definition</span>
+          </div>
+          <div class="card-body">
+            <div id="extrinsic-root"></div>
+          </div>
+        </div>
+      </div><!-- /subpane stability -->
+    </section>
+
+    <!-- ═══════════════════════════ Cite ═══════════════════════════ -->
+    <section class="section" id="cite">
+      <div style="margin:14px 0 20px;display:flex;flex-wrap:wrap;gap:10px">
+        <a href="https://huggingface.co/datasets/LLM-multitudes-neurips-2026/LLM-Multitudes" target="_blank" class="btn primary" style="text-decoration:none">🤗 LLM-Multitudes dataset ↗</a>
+        <a href="#" class="btn" style="text-decoration:none" data-noop>📄 Full paper ↗</a>
+      </div>
+      <div class="cite-block">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
+          <h3 style="margin:0">BibTeX</h3>
+          <button id="bibtex-copy" class="btn" type="button" style="font-size:11px">Copy</button>
+        </div>
+        <pre id="bibtex-pre">@inproceedings{trhlik2026multitudes,
+  title     = {LLMs Contain Multitudes: How Deployment Context
+               Reshapes Model-Level Preferences and Values},
+  author    = {Trhlik, Filip and O'Flynn, Aoife and Yu, Angela
+               and Findeis, Arduin and Buttery, Paula},
+  booktitle = {Advances in Neural Information Processing Systems
+               (Evaluations and Datasets Track)},
+  year      = {2026}
+}</pre>
+      </div>
+    </section>
+
+    <div class="foot">
+      <div class="foot-lhs">
+        <!-- University of Cambridge mark: inline SVG of the shield + wordmark in Cambridge blue -->
+        <a class="cam-mark" href="https://www.cam.ac.uk" target="_blank" aria-label="University of Cambridge" title="University of Cambridge">
+          <img src="assets/cambridge.svg" alt="University of Cambridge">
+        </a>
+        <span class="foot-divider"></span>
+        <span>LLMs Contain Multitudes</span>
+      </div>
+      <div><a href="https://huggingface.co/datasets/LLM-multitudes-neurips-2026/LLM-Multitudes" target="_blank">🤗 Dataset</a> | <a href="mailto:ft360@cam.ac.uk">ft360@cam.ac.uk</a></div>
+    </div>
+
+  </main>
+</div>
+
+<div class="tip" id="tooltip"><span class="tt"></span><span class="tn"></span><span class="ts"></span></div>
+
+<script src="site_data.js?v=28"></script>
+<script src="charts.js?v=89"></script>
+<script>
+// ── Cycling-letter animation for the hero word "Multitudes" ──
+// 30 visually distinct display fonts. Each letter gets its own timer with a
+// random interval so the cycles drift out of phase and never look synchronised.
+(function cycleHeroFonts(){
+  // Curated 28-font list. Removed: Monoton (horizontal stripes look like dashes),
+  // Saira Stencil One (stencil gaps), Faster One (motion lines beneath), Vast Shadow
+  // (drop shadow reads as a duplicate), Special Elite (typewriter strike marks),
+  // Zilla Slab Highlight (highlight stripe behind letter).
+  const FONTS = [
+    'Kumbh Sans','Playfair Display','Lobster','Bebas Neue','Pacifico','Fjalla One',
+    'Crimson Text','Roboto Mono','Caveat','Anton','Lora','Merriweather',
+    'Press Start 2P','Russo One','Permanent Marker','Shadows Into Light',
+    'UnifrakturCook','Sacramento','Bungee',
+    'Audiowide','Abril Fatface','Righteous','Yeseva One',
+    'Alfa Slab One','Bowlby One','DM Serif Display','Karla','Patrick Hand'
+  ];
+  const letters = document.querySelectorAll('.hero h1 .cyc');
+  if(!letters.length) return;
+  // Respect users who prefer reduced motion.
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  letters.forEach((el, i)=>{
+    let prev = -1;
+    function pick(){
+      let n;
+      do { n = Math.floor(Math.random()*FONTS.length); } while (n === prev && FONTS.length > 1);
+      prev = n;
+      el.style.fontFamily = `'${FONTS[n]}', 'Kumbh Sans', sans-serif`;
+      setTimeout(pick, 700 + Math.random()*1800);
+    }
+    // Stagger the initial fire so the letters don't all change together.
+    setTimeout(pick, 200 + i*120 + Math.random()*400);
+  });
+})();
+
+// View-tabs (Chart / Table) per chart card
+(function viewtabs(){
+  document.querySelectorAll('.viewtabs').forEach(vt=>{
+    const card = vt.closest('.card');
+    if(!card) return;
+    vt.querySelectorAll('.vt').forEach(b=>{
+      b.addEventListener('click',()=>{
+        const view = b.dataset.view;
+        vt.querySelectorAll('.vt').forEach(x=>x.classList.toggle('on', x === b));
+        card.querySelectorAll('.view-pane').forEach(p=>p.classList.toggle('on', p.dataset.view === view));
+      });
+    });
+  });
+})();
+
+// Subsection tab switcher — only one subpane visible per .subtabs nav
+window.wireSubtabs = function wireSubtabs(scope){
+  scope = scope || document;
+  scope.querySelectorAll('.subtabs').forEach(nav=>{
+    if(nav._wired) return; nav._wired = true;
+    const tabs = [...nav.querySelectorAll('.st')];
+    // Find subpanes that are siblings to this nav (within the same parent block)
+    const parent = nav.parentElement;
+    const panes = [...parent.querySelectorAll(':scope > .subpane')];
+    tabs.forEach(b => b.addEventListener('click', () => {
+      const sub = b.dataset.sub;
+      tabs.forEach(t => t.classList.toggle('on', t === b));
+      panes.forEach(p => p.classList.toggle('on', p.dataset.sub === sub));
+    }));
+  });
+};
+wireSubtabs();
+
+// Section tab switcher — only one section visible at a time
+(function tabs(){
+  const buttons = Array.from(document.querySelectorAll('.tabbar .t'));
+  const sections = Array.from(document.querySelectorAll('.section'));
+  function show(id, push){
+    sections.forEach(s => s.classList.toggle('on', s.id === id));
+    buttons.forEach(b => b.classList.toggle('on', b.dataset.sec === id));
+    if(push !== false && history.replaceState){
+      history.replaceState(null,'','#'+id);
+    }
+    // scroll the tab bar so the active tab is visible
+    const active = buttons.find(b => b.dataset.sec === id);
+    if(active && active.scrollIntoView) active.scrollIntoView({block:'nearest',inline:'nearest',behavior:'smooth'});
+  }
+  buttons.forEach(b => b.addEventListener('click', () => show(b.dataset.sec)));
+  // honor #hash on load
+  const hash = (location.hash || '').replace('#','');
+  if(hash && sections.some(s => s.id === hash)) show(hash, false);
+})();
+
+// Placeholder buttons (Full paper, etc.) — no destination yet, so swallow the click
+document.querySelectorAll('a[data-noop]').forEach(a => a.addEventListener('click', e => e.preventDefault()));
+
+// BibTeX copy-to-clipboard
+(function(){
+  const btn = document.getElementById('bibtex-copy');
+  const pre = document.getElementById('bibtex-pre');
+  if(!btn || !pre) return;
+  btn.addEventListener('click', async () => {
+    const txt = pre.textContent;
+    let ok = false;
+    try { await navigator.clipboard.writeText(txt); ok = true; }
+    catch(e){
+      // Fallback for older / non-secure contexts
+      const ta = document.createElement('textarea');
+      ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand('copy'); } catch(_){}
+      ta.remove();
+    }
+    const orig = btn.textContent;
+    btn.textContent = ok ? 'Copied' : 'Copy failed';
+    setTimeout(() => { btn.textContent = orig; }, 1600);
+  });
+})();
+</script>
+</body>
+</html>
