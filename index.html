@@ -206,6 +206,9 @@ button{font-family:inherit;cursor:pointer;background:transparent;border:none;col
   vertical-align:top;
   overflow:visible;
 }
+/* When the widest possible "Multitudes" rendering would overflow the line,
+   force it onto its own row so the layout doesn't reflow during font cycling. */
+.hero h1.force-wrap .word-cyc{display:block}
 .hero h1 .cyc{
   display:inline-block;
   font-weight:700;
@@ -470,8 +473,13 @@ button{font-family:inherit;cursor:pointer;background:transparent;border:none;col
 }
 
 /* ─── Setup context table ─── */
-.setup-ctx-tbl td{vertical-align:middle;padding:12px 14px;text-align:left}
-.setup-ctx-tbl td.mono{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);line-height:1.5;text-align:left}
+/* setup-ctx-tbl and the paraphrase wording-tbl both opt out of the default
+   .tbl min-width:520px so each column reflows to fit the viewport instead of
+   forcing horizontal scroll on narrow screens. Higher-specificity selector
+   so it wins over the .tbl baseline that comes later in the stylesheet. */
+.tbl.setup-ctx-tbl{min-width:0}
+.setup-ctx-tbl td{vertical-align:top;padding:12px 14px;text-align:left}
+.setup-ctx-tbl td.mono{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);line-height:1.5;text-align:left;white-space:normal;overflow-wrap:break-word;word-break:break-word}
 .setup-ctx-tbl td.mono.mute{color:var(--mute);font-style:italic}
 .setup-ctx-tbl td.mono b{color:var(--ink);font-weight:600}
 .setup-ctx-tbl thead th{font-family:var(--mono);font-size:11px;color:var(--mute);padding:10px 14px;text-align:left;background:var(--bg-2);border-bottom:1px solid var(--line)}
@@ -742,9 +750,14 @@ th[data-tt], td.sub-head[data-tt], .tbl tbody td[data-tt]:first-child,
           <span class="meta">each pairwise prompt is bracketed by the ⊤ context line and the ⊥ task line</span>
         </div>
         <div class="card-body" style="padding:0">
-          <div class="tbl-wrap"><table class="tbl setup-ctx-tbl" style="min-width:680px">
+          <div class="tbl-wrap"><table class="tbl setup-ctx-tbl" style="table-layout:fixed;width:100%">
+            <colgroup>
+              <col style="width:118px">
+              <col style="width:32%">
+              <col>
+            </colgroup>
             <thead><tr>
-              <th style="width:140px">Context</th>
+              <th>Context</th>
               <th><span style="color:#7e22ce">⊤</span> {context line}</th>
               <th><span style="color:#0f766e">⊥</span> {task line}</th>
             </tr></thead>
@@ -1113,7 +1126,7 @@ th[data-tt], td.sub-head[data-tt], .tbl tbody td[data-tt]:first-child,
 <div class="tip" id="tooltip"><span class="tt"></span><span class="tn"></span><span class="ts"></span></div>
 
 <script src="site_data.js?v=28"></script>
-<script src="charts.js?v=89"></script>
+<script src="charts.js?v=99"></script>
 <script>
 // ── Cycling-letter animation for the hero word "Multitudes" ──
 // 30 visually distinct display fonts. Each letter gets its own timer with a
@@ -1122,7 +1135,8 @@ th[data-tt], td.sub-head[data-tt], .tbl tbody td[data-tt]:first-child,
   // Curated 28-font list. Removed: Monoton (horizontal stripes look like dashes),
   // Saira Stencil One (stencil gaps), Faster One (motion lines beneath), Vast Shadow
   // (drop shadow reads as a duplicate), Special Elite (typewriter strike marks),
-  // Zilla Slab Highlight (highlight stripe behind letter).
+  // Zilla Slab Highlight (highlight stripe behind letter), Major Mono Display
+  // (baseline line under letter), Cinzel.
   const FONTS = [
     'Kumbh Sans','Playfair Display','Lobster','Bebas Neue','Pacifico','Fjalla One',
     'Crimson Text','Roboto Mono','Caveat','Anton','Lora','Merriweather',
@@ -1131,8 +1145,56 @@ th[data-tt], td.sub-head[data-tt], .tbl tbody td[data-tt]:first-child,
     'Audiowide','Abril Fatface','Righteous','Yeseva One',
     'Alfa Slab One','Bowlby One','DM Serif Display','Karla','Patrick Hand'
   ];
+  const h1 = document.querySelector('.hero h1');
+  const word = document.querySelector('.hero h1 .word-cyc');
   const letters = document.querySelectorAll('.hero h1 .cyc');
-  if(!letters.length) return;
+  if(!h1 || !word || !letters.length) return;
+
+  // ── Layout-stability pre-pass ──
+  // The widest font may make "Multitudes" too wide to share a line with
+  // "LLMs Contain ", which would cause the line to reflow mid-animation as
+  // fonts cycle. Up-front: measure every font's width for the word, take the
+  // max, and force "Multitudes" onto its own line if the worst case wouldn't
+  // fit. Re-run on resize so the decision tracks viewport changes.
+  function decideWrap(){
+    const fontSize = parseFloat(getComputedStyle(h1).fontSize) || 32;
+    const fontWeight = getComputedStyle(h1).fontWeight || '700';
+    // Hidden probe span — same metrics as the cycling letters.
+    const probe = document.createElement('span');
+    probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:nowrap;font-size:'+fontSize+'px;font-weight:'+fontWeight+';letter-spacing:-.025em;line-height:1;';
+    probe.textContent = 'Multitudes';
+    document.body.appendChild(probe);
+    let maxWord = 0;
+    for(const f of FONTS){
+      probe.style.fontFamily = "'"+f+"', 'Kumbh Sans', sans-serif";
+      maxWord = Math.max(maxWord, probe.getBoundingClientRect().width);
+    }
+    // Prefix width using the page's display font.
+    probe.style.fontFamily = "'Kumbh Sans', sans-serif";
+    probe.textContent = 'LLMs Contain ';
+    const prefixWidth = probe.getBoundingClientRect().width;
+    document.body.removeChild(probe);
+
+    const available = h1.clientWidth;
+    // 12 px safety margin for sub-pixel rounding and stroke overflow.
+    const needsWrap = (prefixWidth + maxWord + 12) > available;
+    h1.classList.toggle('force-wrap', needsWrap);
+  }
+
+  function whenFontsReady(cb){
+    if(document.fonts && document.fonts.ready){
+      document.fonts.ready.then(cb, cb);
+    } else {
+      window.addEventListener('load', cb, {once:true});
+    }
+  }
+  whenFontsReady(decideWrap);
+  let resizeTimer = null;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(decideWrap, 120);
+  });
+
   // Respect users who prefer reduced motion.
   if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   letters.forEach((el, i)=>{
