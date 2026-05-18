@@ -5,6 +5,37 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LLMs Contain Multitudes — How deployment context reshapes model-level preferences</title>
 <meta name="description" content="Across 5 LLMs and 1M+ pairwise decisions, deployment context produces variation far larger than prompt paraphrasing and temperature controls.">
+
+<!-- ────────────────────────────────────────────────────────────
+     Social-share preview (Open Graph + Twitter Card)
+
+     `og:image` / `twitter:image` should be an absolute URL for the
+     widest crawler compatibility. After you deploy to GitHub Pages,
+     replace the two REPLACE_ME URLs below with your live link, e.g.
+       https://your-name.github.io/llm-multitudes-website/assets/og-preview.png
+     Most modern scrapers (Twitter/X, LinkedIn, Slack, Discord, iMessage)
+     also resolve a relative path against the page URL, so the relative
+     value will keep working as a fallback in the meantime.
+     ──────────────────────────────────────────────────────────── -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="LLMs Contain Multitudes — how deployment context reshapes model preferences">
+<meta property="og:description" content="Across 5 LLMs and 1M+ pairwise decisions, deployment context produces variation far larger than prompt paraphrasing and temperature controls. NeurIPS 2026 Datasets & Benchmarks Track.">
+<meta property="og:url" content="https://REPLACE_ME.github.io/llm-multitudes-website/">
+<meta property="og:image" content="assets/og-preview.png">
+<meta property="og:image:secure_url" content="assets/og-preview.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="LLMs Contain Multitudes — paper title card with five deployment-context dots (Neutral, News, Reddit, School, Vlog) and headline stats.">
+<meta property="og:site_name" content="LLMs Contain Multitudes">
+<meta property="og:locale" content="en_GB">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="LLMs Contain Multitudes">
+<meta name="twitter:description" content="Across 5 LLMs and 1M+ pairwise decisions, deployment context reshapes model-level preferences far more than paraphrasing or temperature. NeurIPS 2026 D&B.">
+<meta name="twitter:image" content="assets/og-preview.png">
+<meta name="twitter:image:alt" content="LLMs Contain Multitudes — paper title card with five deployment-context dots and headline stats.">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!--
@@ -205,9 +236,18 @@ button{font-family:inherit;cursor:pointer;background:transparent;border:none;col
   line-height:1;
   vertical-align:top;
   overflow:visible;
+  /* Never break "Multitudes" internally — keeps the word atomic so the browser
+     can't auto-wrap one of its letters to a new line mid-cycle. */
+  white-space:nowrap;
 }
 /* When the widest possible "Multitudes" rendering would overflow the line,
-   force it onto its own row so the layout doesn't reflow during font cycling. */
+   force it onto its own row so the layout doesn't reflow during font cycling.
+   The CSS @media query handles narrow viewports instantly (no JS round-trip,
+   no flash-of-inline on reload); the .force-wrap class is set by JS to refine
+   the threshold for edge cases at wider viewports. */
+@media(max-width:640px){
+  .hero h1 .word-cyc{display:block}
+}
 .hero h1.force-wrap .word-cyc{display:block}
 .hero h1 .cyc{
   display:inline-block;
@@ -1176,8 +1216,15 @@ th[data-tt], td.sub-head[data-tt], .tbl tbody td[data-tt]:first-child,
     document.body.removeChild(probe);
 
     const available = h1.clientWidth;
-    // 12 px safety margin for sub-pixel rounding and stroke overflow.
-    const needsWrap = (prefixWidth + maxWord + 12) > available;
+    const needed = prefixWidth + maxWord;
+    // Hysteresis: once wrapped, stay wrapped unless we comfortably clear the
+    // bar (40 px slack). When inline, only wrap if we clearly overflow (12 px
+    // safety). Prevents the layout from oscillating at the boundary if the
+    // viewport flexes by a couple of pixels or the measurement varies slightly.
+    const currentlyWrapped = h1.classList.contains('force-wrap');
+    const needsWrap = currentlyWrapped
+      ? (needed + 40) > available
+      : (needed + 12) > available;
     h1.classList.toggle('force-wrap', needsWrap);
   }
 
