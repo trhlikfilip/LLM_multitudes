@@ -839,9 +839,9 @@ th[data-tt], td.sub-head[data-tt], .tbl tbody td[data-tt]:first-child,
 
       <!-- compact key-row -->
       <div class="kpis" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
-        <div class="kpi"><div class="lab">(country, trait) pairs sig.</div><div class="v">76.7<em>%</em></div></div>
-        <div class="kpi"><div class="lab">CMH cells sig. (p&lt;0.05)</div><div class="v">37<em>%</em></div></div>
-        <div class="kpi"><div class="lab">avg N–S swing | subj.</div><div class="v">1.9</div></div>
+        <div class="kpi"><div class="lab">significant country-trait pairs</div><div class="v">76.7<em>%</em></div></div>
+        <div class="kpi"><div class="lab">significant rank-shift cells</div><div class="v">37<em>%</em></div></div>
+        <div class="kpi"><div class="lab">subjective N–S swing</div><div class="v">1.9</div></div>
       </div>
 
       <nav class="subtabs">
@@ -880,6 +880,14 @@ th[data-tt], td.sub-head[data-tt], .tbl tbody td[data-tt]:first-child,
           </div>
           <div class="view-pane on" data-view="chart">
             <div class="chart" id="country-distrib-chart"></div>
+            <!-- Colour-key footnote, styled to match the inter-country heatmap key. -->
+            <div style="margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--mute);line-height:1.6">
+              <b style="color:var(--north)">Global&nbsp;North</b>:
+              Australia, Canada, Czechia, France, Japan, Switzerland, USA.
+              &nbsp;
+              <b style="color:var(--south)">Global&nbsp;South</b>:
+              Brazil, China, India, Indonesia, Kenya, Nigeria, Peru, Saudi&nbsp;Arabia.
+            </div>
           </div>
           <div class="view-pane" data-view="table">
             <div id="country-distrib-table" class="tbl-wrap"></div>
@@ -953,9 +961,9 @@ th[data-tt], td.sub-head[data-tt], .tbl tbody td[data-tt]:first-child,
       </div>
 
       <div class="kpis" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
-        <div class="kpi"><div class="lab">outcomes shift ≥1 ctx-pair</div><div class="v">61.2<em>%</em></div></div>
-        <div class="kpi"><div class="lab">(model × outcome × pair) cells</div><div class="v">22.0<em>%</em></div></div>
-        <div class="kpi"><div class="lab">median exchange-rate shift</div><div class="v">2.47<em>×</em></div></div>
+        <div class="kpi"><div class="lab">rank-shifting outcomes</div><div class="v">61.2<em>%</em></div></div>
+        <div class="kpi"><div class="lab">significant rank-shift cells</div><div class="v">22.0<em>%</em></div></div>
+        <div class="kpi"><div class="lab">median trade-off swing</div><div class="v">2.47<em>×</em></div></div>
       </div>
 
       <nav class="subtabs">
@@ -1131,15 +1139,7 @@ th[data-tt], td.sub-head[data-tt], .tbl tbody td[data-tt]:first-child,
           <h3 style="margin:0">BibTeX</h3>
           <button id="bibtex-copy" class="btn" type="button" style="font-size:11px">Copy</button>
         </div>
-        <pre id="bibtex-pre">@inproceedings{trhlik2026multitudes,
-  title     = {LLMs Contain Multitudes: How Deployment Context
-               Reshapes Model-Level Preferences and Values},
-  author    = {Trhlik, Filip and O'Flynn, Aoife and Yu, Angela
-               and Findeis, Arduin and Buttery, Paula},
-  booktitle = {Advances in Neural Information Processing Systems
-               (Evaluations and Datasets Track)},
-  year      = {2026}
-}</pre>
+        <pre id="bibtex-pre">[BibTeX placeholder — citation will be added once the paper is accepted.]</pre>
       </div>
     </section>
 
@@ -1160,8 +1160,8 @@ th[data-tt], td.sub-head[data-tt], .tbl tbody td[data-tt]:first-child,
 
 <div class="tip" id="tooltip"><span class="tt"></span><span class="tn"></span><span class="ts"></span></div>
 
-<script src="site_data.js?v=28"></script>
-<script src="charts.js?v=99"></script>
+<script src="site_data.js?v=32"></script>
+<script src="charts.js?v=109"></script>
 <script>
 // ── Cycling-letter animation for the hero word "Multitudes" ──
 // 30 visually distinct display fonts. Each letter gets its own timer with a

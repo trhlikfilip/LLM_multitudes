@@ -340,22 +340,24 @@ function renderCountryDistribChart(){
 
   let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="font-family:var(--sans);shape-rendering:geometricPrecision" preserveAspectRatio="xMidYMid meet">`;
 
-  // gradient defs for the rank-interval indicator
+  // gradient defs for the rank-interval indicator — light-grey across the
+  // board (single neutral wash, no semantic N/S colour) so the per-context
+  // dots inside the capsule carry all the colour weight.
   svg += `<defs>
     <linearGradient id="intGradN" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1d4ed8" stop-opacity=".70"/>
-      <stop offset="50%" stop-color="#1d4ed8" stop-opacity=".18"/>
-      <stop offset="100%" stop-color="#1d4ed8" stop-opacity=".70"/>
+      <stop offset="0%" stop-color="#0f172a" stop-opacity=".18"/>
+      <stop offset="50%" stop-color="#0f172a" stop-opacity=".04"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity=".18"/>
     </linearGradient>
     <linearGradient id="intGradS" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#c2410c" stop-opacity=".70"/>
-      <stop offset="50%" stop-color="#c2410c" stop-opacity=".18"/>
-      <stop offset="100%" stop-color="#c2410c" stop-opacity=".70"/>
+      <stop offset="0%" stop-color="#0f172a" stop-opacity=".18"/>
+      <stop offset="50%" stop-color="#0f172a" stop-opacity=".04"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity=".18"/>
     </linearGradient>
     <linearGradient id="intGradX" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#52525b" stop-opacity=".70"/>
-      <stop offset="50%" stop-color="#52525b" stop-opacity=".18"/>
-      <stop offset="100%" stop-color="#52525b" stop-opacity=".70"/>
+      <stop offset="0%" stop-color="#0f172a" stop-opacity=".18"/>
+      <stop offset="50%" stop-color="#0f172a" stop-opacity=".04"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity=".18"/>
     </linearGradient>
   </defs>`;
 
@@ -769,9 +771,9 @@ function renderUtilityDistribChart(){
   // gradient defs
   svg += `<defs>
     <linearGradient id="uintGrad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#52525b" stop-opacity=".60"/>
-      <stop offset="50%" stop-color="#52525b" stop-opacity=".20"/>
-      <stop offset="100%" stop-color="#52525b" stop-opacity=".60"/>
+      <stop offset="0%" stop-color="#0f172a" stop-opacity=".18"/>
+      <stop offset="50%" stop-color="#0f172a" stop-opacity=".04"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity=".18"/>
     </linearGradient>
   </defs>`;
 
@@ -1301,7 +1303,7 @@ function renderAblations(){
   });
   html += `</tbody></table></div>
     <div style="font-family:var(--mono);font-size:11px;color:var(--mute);margin-top:8px;line-height:1.55">
-      At most 3/30 cells differ from t=1 at any non-zero temperature; mean Spearman ρ ≥ 0.98 throughout; mean per-cell rank shift ≤ 0.22 positions (out of 15). t=0 is deterministic — only one repeat per item, so the M-W rank test is uninformative there. Right-most columns: <b style="color:#15803d">within-t context CMH</b> stays at 25-31/60 (vs 22/60 at t=1), and the subjective N-S gap range across contexts stays in 1.63-2.28 (vs 1.80 at t=1) — the RQ1/RQ2 patterns reproduce at every temperature.
+      At most 3/30 cells differ from t=1; mean Spearman ρ ≥ 0.98 and per-cell rank shift ≤ 0.22 positions (out of 15). <b style="color:#15803d">Within-t context CMH</b> holds at 25-31/60 (vs 22/60 at t=1) and the subjective N-S gap range stays in 1.63-2.28 (vs 1.80) — RQ1/RQ2 reproduce at every temperature.
     </div>
   </div></div><!-- /temperature subpane -->`;
 
@@ -1371,7 +1373,7 @@ function renderAblations(){
               <td style="color:#7e22ce;font-weight:700"><span style="font-size:9px;margin-right:2px">▲</span>+${sN-sR}</td>
             </tr>
           </tbody></table></div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--mute);margin-top:6px;line-height:1.55">Even <i>life expectancy</i> flips from 2/10 to 9/10 significant context-pairs under forced single-token answers.</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--mute);margin-top:6px;line-height:1.55">Stripping the chain-of-thought amplifies context rather than damping it: significant context-pairs rise on most traits, and even <i>life expectancy</i> flips from 2/10 to 9/10 under forced single-token answers.</div>
       </details>
     </div>
 
@@ -1392,7 +1394,7 @@ function renderAblations(){
           <td style="color:var(--mute);font-size:10.5px;text-align:left">${r.note}</td>
         </tr>`).join('')}
       </tbody></table></div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--mute);margin-top:8px;line-height:1.55">Same pattern on utility: smaller magnitudes (median exchange-rate ${nu.median_xrate.no_reasoning.toFixed(2)}× vs ${nu.median_xrate.reasoning.toFixed(2)}×) but every qualitative result preserved.</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--mute);margin-top:8px;line-height:1.55">Same pattern on utility elicitation: magnitudes shrink under forced choice (median exchange-rate ${nu.median_xrate.no_reasoning.toFixed(2)}× vs ${nu.median_xrate.reasoning.toFixed(2)}×) and rho/sig-cell counts move in matching directions, yet every qualitative result from the main analysis is preserved.</div>
     </div>
   </div></div><!-- /noreason subpane -->`;
 
@@ -1501,9 +1503,9 @@ function renderExtrinsicDistribChart(){
 
   svg += `<defs>
     <linearGradient id="extIntGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#52525b" stop-opacity=".70"/>
-      <stop offset="50%" stop-color="#52525b" stop-opacity=".18"/>
-      <stop offset="100%" stop-color="#52525b" stop-opacity=".70"/>
+      <stop offset="0%" stop-color="#0f172a" stop-opacity=".18"/>
+      <stop offset="50%" stop-color="#0f172a" stop-opacity=".04"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity=".18"/>
     </linearGradient>
   </defs>`;
 
@@ -1737,34 +1739,47 @@ function renderInterCountry(){
       const c = getCell(cells, rowC, colC);
       if(!c){html += `<td style="color:var(--mute)">|</td>`;return;}
       const r = c.r, p = c.p;
-      // Perfect-separation pairs (paper renders as literal "0"; pale-yellow background)
-      if(c.perfect){
-        const tt = `${rowC} vs ${colC}||r_rb = 0 (perfect separation)||one country wins every consistent decision in head-to-head — paper renders this as literal "0"`;
-        html += `<td style="background:#e0e7ff;color:#3730a3;font-weight:600;font-size:10.5px" data-tt="${escapeXML(tt)}">0</td>`;
-        return;
-      }
       if(r===undefined){html += `<td style="color:var(--mute)">|</td>`;return;}
       // Non-significant cells (p > .05) render as italic "ns" — matches paper
-      if(p !== undefined && p > 0.05){
-        const tt = `${rowC} vs ${colC}||r_rb = ${r.toFixed(2)} (n.s.)||two-sided binomial p = ${p.toFixed(3)}`;
+      if(p !== undefined && p > 0.05 && !c.perfect){
+        const tt = `${rowC} vs ${colC}||r_rb = ${r.toFixed(2)} (n.s.)||paired Wilcoxon p = ${p.toFixed(3)}`;
         html += `<td style="background:var(--bg-2);color:var(--mute);font-style:italic;font-size:10.5px" data-tt="${escapeXML(tt)}">ns</td>`;
         return;
       }
       const t = Math.abs(r);
       const bg = r>0 ? mixHex("#ffffff", "#15803d", t*0.85) : mixHex("#ffffff", "#b91c1c", t*0.85);
-      const display = r > 0 ? `+${r.toFixed(2)}` : r.toFixed(2);
-      const sigBadge = p===undefined ? '' : (p<=0.001 ? '***' : (p<=0.01 ? '**' : (p<=0.05 ? '*' : '')));
-      const tt = `${rowC} vs ${colC}||r_rb = ${display}${sigBadge?' '+sigBadge:''}||${r>0 ? rowC + ' preferred '+Math.round(t*100)+'% of decisions' : colC + ' preferred '+Math.round(t*100)+'% of decisions'}`;
-      html += `<td style="background:${bg};color:${t>0.60?'#fff':'#0d0d11'};font-size:10.5px;font-weight:500" data-tt="${escapeXML(tt)}">${display}${sigBadge}</td>`;
+      // Perfect-separation: render as compact "+1ᵖ" / "−1ᵖ" (no decimals, no
+      // significance stars — perfect cells are by definition extreme).
+      // Normal cells: "+0.48*" with significance suffix.
+      let cellText;
+      if(c.perfect){
+        cellText = `${r > 0 ? '+1.00' : '−1.00'}<sup style="font-size:8px;opacity:.75;margin-left:1px">p</sup>`;
+      } else {
+        const display = r > 0 ? `+${r.toFixed(2)}` : r.toFixed(2);
+        const sigBadge = p===undefined ? '' : (p<=0.001 ? '***' : (p<=0.01 ? '**' : (p<=0.05 ? '*' : '')));
+        cellText = `${display}${sigBadge}`;
+      }
+      const winner = r > 0 ? rowC : colC;
+      // r_rb = (wins_A − wins_B) / total  ⇒  win_rate_A = (1 + r) / 2
+      const winnerRate = Math.round(100 * (r > 0 ? (1 + r) / 2 : (1 - r) / 2));
+      const sigPhrase = (!c.perfect && p !== undefined)
+        ? (p<=0.001 ? ' ***' : (p<=0.01 ? ' **' : (p<=0.05 ? ' *' : '')))
+        : '';
+      const tt = c.perfect
+        ? `${rowC} vs ${colC}||r_rb = ${r > 0 ? '+1.00' : '−1.00'} · perfect separation||${winner} wins every consistent decision (100%)`
+        : `${rowC} vs ${colC}||r_rb = ${r > 0 ? '+' : ''}${r.toFixed(2)}${sigPhrase}||${winner} wins ${winnerRate}% of consistent decisions (margin = ${Math.round(t*100)} pts per 100)`;
+      html += `<td style="background:${bg};color:${t>0.60?'#fff':'#0d0d11'};font-size:10.5px;font-weight:500" data-tt="${escapeXML(tt)}">${cellText}</td>`;
     });
     html += `</tr>`;
   });
   html += `</tbody></table></div>`;
 
   html += `<div style="margin-top:18px;font-family:var(--mono);font-size:11px;color:var(--mute);line-height:1.6">
-    Each cell = <b style="color:var(--ink-2)">rank-biserial effect size r<sub>rb</sub></b> for (row vs column) — <b style="color:var(--ink-2)">${aggLabel}</b>.
-    <b style="color:#15803d">Green</b> = row preferred. <b style="color:#b91c1c">Red</b> = column preferred. <i>ns</i> = two-sided binomial p &gt; .05.
-  </div></div>`;
+    Each cell = <b style="color:var(--ink-2)">matched rank-biserial r<sub>rb</sub></b> from a <b style="color:var(--ink-2)">paired Wilcoxon signed-rank test</b> on (row vs column) per-comparison binary win indicators — <b style="color:var(--ink-2)">${aggLabel}</b>.
+    <b style="color:#15803d">Green</b> = row preferred. <b style="color:#b91c1c">Red</b> = column preferred. <i>ns</i> = paired-Wilcoxon p &gt; .05.
+    <br>r<sub>rb</sub> = (wins<sub>row</sub> − wins<sub>col</sub>) / total — the <b style="color:var(--ink-2)">win-margin per decision</b>, not the win rate. <b>r<sub>rb</sub> = +0.48 ⇒ row wins 74%</b>, column wins 26%. <b>±1<sup style="font-size:9px;opacity:.75">p</sup></b> marks perfect separation (one side wins every decision).
+  </div>
+  </div>`;
 
   html += `</div><!-- /matrix subpane -->`;
   html += `<div class="subpane ${activeIcSub==='clusters'?'on':''}" data-sub="clusters">`;
@@ -1793,7 +1808,7 @@ function renderInterCountry(){
     </div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px">${dendroBoxes}</div>
     <div style="margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--mute);line-height:1.55">
-      Sub-clusters formed at height ≤ 0.3 are highlighted; long branches separate countries that one decisively dominates. Groupings rarely align with the Global&nbsp;N/S split and rearrange across ${view==='context'?'deployment contexts':'queried traits'}.
+      Distance between two countries = <b style="color:var(--ink-2)">|r<sub>rb</sub>|</b> (the heatmap cell's magnitude); merge height = average pairwise distance within the cluster. <b style="color:var(--ink-2)">Coloured sub-clusters</b> = groups merging at height ≤ 0.30, i.e. countries the model treats <i>interchangeably</i> (split wins ≈ 35-65 either way). <b style="color:var(--ink-2)">Long branches</b> = countries one side decisively dominates. Groupings rarely align with the Global&nbsp;N/S split and rearrange across ${view==='context'?'deployment contexts':'queried traits'}.
     </div>
   `;
 
@@ -1846,7 +1861,7 @@ function renderInterCountry(){
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:14px">${radialBoxes}</div>
     <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:8px">${sigLegend}</div>
     <div style="margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--mute);line-height:1.55">
-      The rings are |r<sub>rb</sub>| = 0.25 / 0.5 / 0.75 / 1.0. Line colour = two-sided binomial p-value tier (a sign-test proxy for the paper's Wilcoxon p). Compare panels side-by-side: the same anchor's "neighbourhood" rearranges across ${view==='context'?'deployment contexts':'queried traits'}.
+      The rings are |r<sub>rb</sub>| = 0.25 / 0.5 / 0.75 / 1.0. Line colour = <b style="color:var(--ink-2)">paired-Wilcoxon p-value tier</b> (two-sided, normal-approximation — matches JASP). Hover any country circle for its r<sub>rb</sub>, p, and win-rate breakdown. Compare panels side-by-side: the same anchor's "neighbourhood" rearranges across ${view==='context'?'deployment contexts':'queried traits'}.
     </div>
   `;
 
@@ -1883,8 +1898,10 @@ function renderInterCountry(){
 // ════════════════════════════════════════════════════════════════════════
 //  Hierarchical clustering & radial helpers (Inter-Country Variation)
 // ════════════════════════════════════════════════════════════════════════
-// Each `cell` is now {r, p, n, perfect}.  `perfect` = true means the paper
-// renders the cell as literal "0" (head-to-head perfect-separation pair).
+// Each `cell` is now {r, p, n, perfect}.  `perfect` = true means head-to-head
+// perfect-separation (one country won every consistent comparison, r = ±1.00).
+// The paper renders these as literal "0"; the website shows the actual ±1.00
+// value with a "perf" badge — see the explainer under the heatmap.
 function getCell(cells, rowC, colC){
   if(!cells) return undefined;
   const k1=`${rowC}|${colC}`, k2=`${colC}|${rowC}`;
@@ -1989,11 +2006,28 @@ function dendrogramHorizontalSvg(root, width, height, abbr){
   const xScale = h  => pad.left + (h/maxH) * plotW;
 
   let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
-  // Country labels on left (one per leaf row)
+  // Build per-leaf cluster info for tooltips: find each leaf's deepest coloured cluster.
+  const leafCluster = {};
+  (function walk(node, parentCol, parentH){
+    if(node.leaf){ leafCluster[node.label] = {col: parentCol, h: parentH}; return; }
+    const myCol = node._col || parentCol;
+    const myH   = (node._col && !parentCol) ? node.height : parentH;
+    walk(node.left,  myCol, myH);
+    walk(node.right, myCol, myH);
+  })(root, null, null);
+  // Country labels on left (one per leaf row) — with hover tooltip
   leafOrder.forEach((lbl,i)=>{
     const y = yScale(i);
     const col = NORTH.has(lbl) ? '#1d4ed8' : (SOUTH.has(lbl) ? '#c2410c' : '#0d0d11');
-    svg += `<text x="${pad.left-4}" y="${y+3}" text-anchor="end" font-size="9.5" font-family="Consolas,monospace" fill="${col}">${abbr[lbl]||lbl}</text>`;
+    const lc = leafCluster[lbl] || {};
+    const tipBody = lc.col
+      ? `belongs to a sub-cluster (merge-height ≤ 0.30)`
+      : `not in a tight sub-cluster — model treats it distinctively`;
+    const tipSub = lc.h !== null && lc.h !== undefined
+      ? `cluster merge-height ≈ ${lc.h.toFixed(2)} (mean |r_rb| inside the cluster)`
+      : ``;
+    const tip = escapeXML(`${lbl}||${tipBody}||${tipSub}`);
+    svg += `<text x="${pad.left-4}" y="${y+3}" text-anchor="end" font-size="9.5" font-family="Consolas,monospace" fill="${col}" data-tt="${tip}" style="cursor:help">${abbr[lbl]||lbl}</text>`;
   });
 
   // X-axis ticks (0, 0.25, 0.5, 0.75, 1.0)
@@ -2045,14 +2079,33 @@ function radialPaperSvg(cells, anchor, countries, size, abbr){
     if(p <= 0.05 ) return '#a16207';   // amber-700
     return '#a1a1aa';                  // n.s.
   };
-  // Pre-compute each peer country's effect-size distance + p-tier colour
-  const peers = others.map((c,i)=>{
+  // Pre-compute each peer country's effect-size distance + p-tier colour.
+  // `c` is full cell {r, p, n, perfect} — we keep perfect/n for tooltips.
+  const peers = others.map((cName,i)=>{
     const a = angle(i);
-    const r = getCellR(cells, anchor, c);
-    const p = getCellP(cells, anchor, c);
+    const cell = getCell(cells, anchor, cName);
+    const r = cell ? cell.r : undefined;
+    const p = cell ? cell.p : undefined;
     const dist = (r === undefined) ? 0 : Math.abs(r);
-    return {c, a, dist, r, p, col: pTierColor(p)};
+    return {c: cName, a, dist, r, p, perfect: !!(cell && cell.perfect),
+            cn: cell ? cell.n : undefined, col: pTierColor(p)};
   });
+
+  // Build tooltip text for one peer
+  const peerTip = (p) => {
+    if(p.r === undefined) return `${anchor} vs ${p.c}||no data||`;
+    const sig = (p.p === undefined) ? ''
+              : (p.p <= 0.001 ? ' ***' : (p.p <= 0.01 ? ' **' : (p.p <= 0.05 ? ' *' : ' (n.s.)')));
+    const rTxt = p.r > 0 ? `+${p.r.toFixed(2)}` : p.r.toFixed(2);
+    if(p.perfect){
+      return `${anchor} vs ${p.c}||r_rb = ${p.r > 0 ? '+1.00' : '−1.00'} · perfect separation||${p.r > 0 ? anchor : p.c} wins every consistent decision (100%) · n = ${p.cn}`;
+    }
+    // win_rate of the country in the positive direction = (1 + r) / 2
+    const winner = p.r > 0 ? anchor : p.c;
+    const winnerRate = Math.round(100 * (p.r > 0 ? (1 + p.r) / 2 : (1 - p.r) / 2));
+    const margin = Math.round(100 * p.dist);
+    return `${anchor} vs ${p.c}||r_rb = ${rTxt}${sig}||${winner} wins ${winnerRate}% of consistent decisions (margin = ${margin} pts per 100) · n = ${p.cn}`;
+  };
 
   let svg = `<svg width="${size}" height="${size+12}" viewBox="0 0 ${size} ${size+12}" xmlns="http://www.w3.org/2000/svg">`;
   // Concentric reference rings (the outermost gets a faint tint to evoke "rim = decisive difference")
@@ -2071,17 +2124,19 @@ function radialPaperSvg(cells, anchor, countries, size, abbr){
     if(p.dist < 0.02) return;   // skip near-zero — circle sits ~on top of anchor
     const ex = cx + Math.cos(p.a) * R * p.dist;
     const ey = cy + Math.sin(p.a) * R * p.dist;
-    svg += `<line x1="${cx}" y1="${cy}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="${p.col}" stroke-width="1.5" stroke-opacity=".95" stroke-linecap="round"/>`;
+    svg += `<line x1="${cx}" y1="${cy}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="${p.col}" stroke-width="1.5" stroke-opacity=".95" stroke-linecap="round" data-tt="${escapeXML(peerTip(p))}" style="cursor:help"/>`;
   });
   // Peer country circles positioned AT their effect-size distance from the
   // anchor (matches the paper's layout where most countries cluster near SA
-  // for vibes/life-expectancy in Llama-8B/70B).
+  // for vibes/life-expectancy in Llama-8B/70B). Both the circle and its text
+  // label carry the same tooltip so hover-anywhere works.
   peers.forEach(p=>{
     const ox = cx + Math.cos(p.a) * R * p.dist;
     const oy = cy + Math.sin(p.a) * R * p.dist;
     const col = NORTH.has(p.c) ? '#1d4ed8' : (SOUTH.has(p.c) ? '#c2410c' : '#0d0d11');
-    svg += `<circle cx="${ox.toFixed(1)}" cy="${oy.toFixed(1)}" r="9" fill="#ffffff" stroke="${col}" stroke-width="1.1"/>`;
-    svg += `<text x="${ox.toFixed(1)}" y="${(oy+3).toFixed(1)}" text-anchor="middle" font-size="8.5" font-family="Consolas,monospace" fill="${col}">${abbr[p.c]||p.c}</text>`;
+    const tip = escapeXML(peerTip(p));
+    svg += `<circle cx="${ox.toFixed(1)}" cy="${oy.toFixed(1)}" r="9" fill="#ffffff" stroke="${col}" stroke-width="1.1" data-tt="${tip}" style="cursor:help"/>`;
+    svg += `<text x="${ox.toFixed(1)}" y="${(oy+3).toFixed(1)}" text-anchor="middle" font-size="8.5" font-family="Consolas,monospace" fill="${col}" data-tt="${tip}" style="cursor:help">${abbr[p.c]||p.c}</text>`;
   });
   // Anchor on top so its label is never hidden by clustered peers.
   svg += `<circle cx="${cx}" cy="${cy}" r="13" fill="#ffffff" stroke="#4338ca" stroke-width="1.4"/>`;
